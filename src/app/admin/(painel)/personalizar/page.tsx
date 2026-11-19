@@ -38,7 +38,7 @@ export default async function CustomizePage() {
               <TextArea label="Texto do enxoval" name="registryText" defaultValue={s.registryText} rows={3} maxLength={400} />
             </div>
             <Field
-              label="Lembrete no botão do enxoval"
+              label="Lembrete da fralda (abaixo do botão do enxoval)"
               name="registryReminder"
               defaultValue={s.registryReminder}
               maxLength={220}

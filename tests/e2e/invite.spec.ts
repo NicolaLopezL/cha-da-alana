@@ -227,7 +227,7 @@ test.describe("Convite personalizado e confirmação", () => {
       const form = p.getByTestId("rsvp-form");
       await form.scrollIntoViewIfNeeded();
       await form.getByLabel("Seu nome completo").fill(name);
-      await form.getByLabel(/WhatsApp/).fill("(11) 98888-7777");
+      await expect(form.getByLabel(/WhatsApp/)).toHaveCount(0); // não pede telefone
       // O campo de acompanhantes já aparece; digitar o número marca "vou"
       await form.getByLabel("Quantas pessoas vão com você?").fill(String(people - 1));
       await expect(form.getByText("Vou, com certeza!")).toBeVisible();
@@ -324,7 +324,9 @@ test.describe("Convite personalizado e confirmação", () => {
     await expect(reg).toHaveAttribute("href", "https://example.com/enxoval-teste");
     await expect(reg).toHaveAttribute("target", "_blank");
     await expect(reg).toHaveAttribute("rel", /noopener/);
-    // Lembrete divertido da fralda ao tocar no botão do enxoval
+    // Lembrete da fralda sempre visível (sem precisar passar o mouse)
+    await expect(g.getByTestId("registry-reminder")).toBeVisible();
+    await expect(g.getByTestId("registry-reminder")).toContainText("fralda");
     const popup = context.waitForEvent("page");
     await reg.click();
     await (await popup).close();

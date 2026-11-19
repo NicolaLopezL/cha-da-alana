@@ -254,21 +254,10 @@ export function GiftsSection({ s, gifts }: { s: PublicSettings; gifts: GiftSugge
 
 /* Cena 10 — lista de enxoval (site externo, separada das sugestões) */
 export function RegistrySection({ s }: { s: PublicSettings }) {
-  const [tip, setTip] = useState(false);
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const showTip = (ms?: number) => {
-    setTip(true);
-    clearTimeout(hideTimer.current);
-    if (ms) hideTimer.current = setTimeout(() => setTip(false), ms);
-  };
-  useEffect(() => () => clearTimeout(hideTimer.current), []);
-  // Disparado após a confirmação de presença
+  // Depois de confirmar presença, o recado da fralda dá uma "piscadinha" para chamar atenção
+  const [nudge, setNudge] = useState(0);
   useEffect(() => {
-    const onReminder = () => {
-      setTip(true);
-      clearTimeout(hideTimer.current);
-      hideTimer.current = setTimeout(() => setTip(false), 10000);
-    };
+    const onReminder = () => setNudge((n) => n + 1);
     window.addEventListener("alana:registry-reminder", onReminder);
     return () => window.removeEventListener("alana:registry-reminder", onReminder);
   }, []);
@@ -278,7 +267,7 @@ export function RegistrySection({ s }: { s: PublicSettings }) {
     <section id="enxoval" className="px-4 py-10 sm:py-16" aria-labelledby="enxoval-title">
       <div
         data-reveal
-        className="relative mx-auto max-w-3xl overflow-hidden rounded-[32px] bg-blush-100 px-6 pb-14 pt-14 text-center sm:px-14 sm:py-16"
+        className="relative mx-auto max-w-3xl overflow-hidden rounded-[32px] bg-blush-100 px-6 pb-12 pt-14 text-center sm:px-14 sm:py-16"
       >
         <div
           className="pointer-events-none absolute inset-0 opacity-50"
@@ -294,34 +283,11 @@ export function RegistrySection({ s }: { s: PublicSettings }) {
         <p className="relative mx-auto mt-4 max-w-[40ch] text-[1rem] leading-relaxed text-cocoa-700/85">{s.registryText}</p>
 
         <div className="relative mx-auto mt-10 w-full max-w-sm">
-          {/* lembrete da fralda (aparece ao chegar perto, focar ou tocar no botão) */}
-          <div
-            role="status"
-            aria-live="polite"
-            className={`absolute bottom-[calc(100%+14px)] left-1/2 w-[min(19rem,88vw)] -translate-x-1/2 transition-all duration-300 ease-[var(--ease-soft)] ${
-              tip ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-2 scale-95 opacity-0"
-            }`}
-            data-testid="registry-reminder"
-          >
-            {tip && s.registryReminder && (
-              <p className="paper relative rounded-2xl px-4 py-3 text-[0.95rem] leading-snug text-cocoa-700 shadow-[var(--shadow-lift)] ring-1 ring-champagne-400/30">
-                {s.registryReminder}
-                <span
-                  aria-hidden="true"
-                  className="paper absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 ring-1 ring-champagne-400/30 [clip-path:polygon(100%_0,100%_100%,0_100%)]"
-                />
-              </p>
-            )}
-          </div>
           <a
             href={s.registryUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onPointerEnter={(e) => e.pointerType === "mouse" && showTip()}
-            onPointerLeave={(e) => e.pointerType === "mouse" && setTip(false)}
-            onFocus={() => showTip()}
-            onBlur={() => setTip(false)}
-            onClick={() => showTip(9000)}
+            aria-describedby={s.registryReminder ? "registry-reminder-text" : undefined}
             className="btn btn-primary w-full !min-h-[60px] !gap-3 !px-8 !text-[1.05rem] shadow-[var(--shadow-lift)]"
             data-testid="registry-link"
           >
@@ -329,6 +295,25 @@ export function RegistrySection({ s }: { s: PublicSettings }) {
             Ver lista de enxoval
             <IconExternal size={17} />
           </a>
+
+          {/* recado da fralda: sempre visível, no celular e no computador */}
+          {s.registryReminder && (
+            <div
+              key={nudge}
+              className={`paper relative mt-7 rounded-2xl border-2 border-dashed border-rose-400/45 px-5 pb-4 pt-6 text-cocoa-700 shadow-[var(--shadow-soft)] ${
+                nudge ? "animate-reminder-nudge" : ""
+              }`}
+              data-testid="registry-reminder"
+            >
+              <span className="absolute -top-3.5 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-rose-600 px-3.5 py-1 text-[0.7rem] font-bold tracking-[0.16em] text-paper uppercase shadow-[var(--shadow-soft)]">
+                <IconHeart size={13} />
+                Lembrete
+              </span>
+              <p id="registry-reminder-text" className="text-[1rem] leading-snug">
+                {s.registryReminder}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </section>

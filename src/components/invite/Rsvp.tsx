@@ -39,7 +39,6 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
     if (!attending) setAttending("yes");
   };
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const [error, setError] = useState<{ text: string; field?: string } | null>(null);
   const [lastResult, setLastResult] = useState<{ attending: RsvpAttending; people: number } | null>(
@@ -122,7 +121,7 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
         const payload = {
           token: guest?.token ?? "",
           name: mode === "generic" ? name : "",
-          phone: mode === "generic" ? phone : "",
+          phone: "",
           attending,
           people: attending === "yes" ? Math.min(people, maxPeople) : 0,
           message,
@@ -277,27 +276,6 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
                     aria-invalid={error?.field === "name"}
                     aria-describedby={fieldErr("name")}
                   />
-                </div>
-                <div>
-                  <label htmlFor={`${uid}-phone`} className="field-label">
-                    WhatsApp <span className="font-normal text-cocoa-500">(opcional)</span>
-                  </label>
-                  <input
-                    id={`${uid}-phone`}
-                    className="field"
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel-national"
-                    placeholder="(11) 99999-9999"
-                    maxLength={20}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    aria-invalid={error?.field === "phone"}
-                    aria-describedby={`${uid}-phone-help ${fieldErr("phone") ?? ""}`}
-                  />
-                  <p id={`${uid}-phone-help`} className="mt-1.5 text-xs text-cocoa-500">
-                    Só para os papais falarem com você, se precisarem.
-                  </p>
                 </div>
               </div>
             )}
