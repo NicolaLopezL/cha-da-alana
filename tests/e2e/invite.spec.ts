@@ -96,6 +96,18 @@ test.describe("Experiência do convite", () => {
     await expect(page.locator("#confirmar")).toBeInViewport();
   });
 
+  test("botão brilhante 'Confirme aqui' aparece na primeira tela e leva ao formulário", async ({ page }) => {
+    await page.goto("/");
+    await openEnvelope(page);
+    const cta = page.getByTestId("hero-confirm");
+    await expect(cta).toHaveText(/Confirme aqui/);
+    await expect(cta).toBeInViewport(); // visível sem precisar rolar
+    await page.waitForTimeout(4500); // espera a entrada da Alana terminar
+    await cta.click({ force: true }); // o botão balança de leve sem parar, então nunca fica "estável"
+    await expect(page.locator("#confirmar")).toBeInViewport();
+    await expect(page.getByTestId("rsvp-form")).toBeVisible();
+  });
+
   test("respeita movimento reduzido", async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: "reduce" });
     const page = await ctx.newPage();

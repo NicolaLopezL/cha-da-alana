@@ -249,6 +249,104 @@ body {
   }
 }
 
+/* Botão "Confirme aqui" do topo: halo pulsando + brilho que atravessa */
+@keyframes cta-halo {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70%,
+  100% {
+    transform: scale(1.18, 1.45);
+    opacity: 0;
+  }
+}
+@keyframes cta-shine {
+  0%,
+  55% {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(220%) skewX(-20deg);
+  }
+}
+@keyframes cta-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.cta-glow {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 56px;
+  padding: 0.9rem 2.1rem;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-paper);
+  background: linear-gradient(135deg, #b27377 0%, var(--color-rose-600) 55%, #85505a 100%);
+  box-shadow:
+    0 0 0 1px rgb(236 220 185 / 0.7) inset,
+    0 10px 28px -8px rgb(156 98 102 / 0.65),
+    0 0 26px rgb(236 220 185 / 0.55);
+  animation: cta-bob 2.6s ease-in-out infinite;
+  touch-action: manipulation;
+  transition:
+    transform 0.25s var(--ease-soft),
+    box-shadow 0.25s var(--ease-soft);
+}
+.cta-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--color-rose-400);
+  animation: cta-halo 2s ease-out infinite;
+}
+.cta-glow-shine {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.cta-glow-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgb(255 253 249 / 0.55), transparent);
+  animation: cta-shine 3.2s ease-in-out infinite;
+}
+.cta-glow:active {
+  transform: scale(0.96);
+}
+@media (hover: hover) {
+  .cta-glow:hover {
+    box-shadow:
+      0 0 0 1px rgb(236 220 185 / 0.9) inset,
+      0 14px 34px -8px rgb(156 98 102 / 0.75),
+      0 0 34px rgb(236 220 185 / 0.8);
+  }
+}
+.cta-glow:focus-visible {
+  outline: 3px solid var(--color-cocoa-900);
+  outline-offset: 4px;
+}
+
 .animate-drift {
   animation: drift var(--dur, 9s) ease-in-out infinite;
 }

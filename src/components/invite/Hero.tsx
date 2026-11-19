@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useRef } from "react";
-import { IconArrowDown } from "./Icons";
+import { useRef, type MouseEvent } from "react";
+import { IconArrowDown, IconHeart } from "./Icons";
 import { HeartBalloon, OrnamentFrame, Particles } from "./Ornaments";
 import { gsap, prefersReducedMotion, SplitText, useGSAP } from "./gsap";
 
@@ -18,6 +18,16 @@ interface Props {
 /** Cena 3 — revelação da Alana: nome escrito à mão, frase e balão de coração. */
 export function Hero({ opened, guestName, phrase, bearImageUrl, showBear, showDecorations }: Props) {
   const scope = useRef<HTMLElement>(null);
+
+  const goToRsvp = (e: MouseEvent<HTMLAnchorElement>) => {
+    const el = document.getElementById("confirmar");
+    if (!el) return;
+    e.preventDefault();
+    const top = el.getBoundingClientRect().top + window.scrollY - 8;
+    window.scrollTo({ top, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    el.setAttribute("tabindex", "-1");
+    el.focus({ preventScroll: true });
+  };
 
   useGSAP(
     () => {
@@ -58,7 +68,7 @@ export function Hero({ opened, guestName, phrase, bearImageUrl, showBear, showDe
   );
 
   return (
-    <section ref={scope} id="inicio" className="paper-ivory relative flex min-h-dvh items-center justify-center overflow-hidden px-6 py-20">
+    <section ref={scope} id="inicio" className="paper-ivory relative flex min-h-dvh items-center justify-center overflow-hidden px-6 py-14 sm:py-20">
       <OrnamentFrame />
       {showDecorations && <Particles count={6} />}
       <div
@@ -98,10 +108,25 @@ export function Hero({ opened, guestName, phrase, bearImageUrl, showBear, showDe
           {phrase}
         </p>
 
+        <div data-hero-cue className="mt-7 flex flex-col items-center gap-2 sm:mt-9">
+          <a href="#confirmar" onClick={goToRsvp} className="cta-glow" data-testid="hero-confirm">
+            <span className="cta-glow-shine" aria-hidden="true" />
+            <IconHeart size={20} />
+            Confirme aqui
+          </a>
+          <a
+            href="#convite"
+            className="flex min-h-11 items-center gap-1.5 rounded-full px-4 text-xs font-medium tracking-[0.18em] text-cocoa-500 uppercase"
+          >
+            ou role para ver tudo
+            <IconArrowDown size={16} className="animate-float-soft" />
+          </a>
+        </div>
+
         {showBear && (
-          <div data-hero-bear className="mt-10 flex items-end justify-center">
+          <div data-hero-bear className="mt-6 flex items-end justify-center sm:mt-8">
             {bearImageUrl ? (
-              <div className="animate-float-soft relative h-[min(46vw,240px)] w-[min(46vw,240px)]">
+              <div className="animate-float-soft relative h-[min(40vw,240px,24dvh)] w-[min(40vw,240px,24dvh)]">
                 <Image
                   src={bearImageUrl}
                   alt="Ursinha da Alana com balão de coração"
@@ -120,15 +145,6 @@ export function Hero({ opened, guestName, phrase, bearImageUrl, showBear, showDe
           </div>
         )}
       </div>
-
-      <a
-        href="#convite"
-        data-hero-cue
-        className="absolute bottom-[calc(var(--safe-bottom)+1.5rem)] left-1/2 flex -translate-x-1/2 flex-col items-center gap-1 rounded-full px-4 py-2 text-xs font-medium tracking-[0.2em] text-cocoa-500 uppercase"
-      >
-        Role
-        <IconArrowDown size={18} className="animate-float-soft" />
-      </a>
     </section>
   );
 }
