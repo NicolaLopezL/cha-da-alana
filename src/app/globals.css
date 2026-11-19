@@ -1,0 +1,326 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Chá da Alana — design system
+   Papelaria premium: marfim, rosa blush e dourado champanhe usado com parcimônia.
+   ========================================================================== */
+
+@theme {
+  --color-paper: #fffdf9;
+  --color-ivory: #fbf7f1;
+  --color-linen: #f5ede4;
+  --color-blush-50: #fcf4f2;
+  --color-blush-100: #f8e6e4;
+  --color-blush-200: #efcfcf;
+  --color-blush-300: #e3b5b5;
+  --color-rose-400: #c98f92;
+  --color-rose-600: #9c6266; /* texto de destaque (AA sobre marfim) */
+  --color-champagne-200: #ecdcb9;
+  --color-champagne-400: #c6a66b; /* somente decoração */
+  --color-champagne-700: #84693a; /* texto dourado (AA sobre marfim) */
+  --color-cocoa-900: #4a3333;
+  --color-cocoa-700: #5b4040; /* texto principal */
+  --color-cocoa-500: #7a5e5e; /* texto secundário */
+  --color-success: #4f7a5b;
+  --color-danger: #a04545;
+
+  --font-display: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  --font-script: var(--font-pinyon), "Pinyon Script", cursive;
+  --font-sans: var(--font-manrope), "Manrope", system-ui, sans-serif;
+
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-paper: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --shadow-paper: 0 1px 1px rgb(74 51 51 / 0.04), 0 8px 24px -12px rgb(74 51 51 / 0.18),
+    0 30px 60px -30px rgb(74 51 51 / 0.22);
+  --shadow-soft: 0 1px 2px rgb(74 51 51 / 0.05), 0 12px 32px -16px rgb(74 51 51 / 0.16);
+  --shadow-lift: 0 2px 4px rgb(74 51 51 / 0.06), 0 24px 48px -20px rgb(74 51 51 / 0.28);
+}
+
+:root {
+  color-scheme: light;
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .22 0 0 0 0 .2 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: auto;
+}
+
+body {
+  background-color: var(--color-ivory);
+  color: var(--color-cocoa-700);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-blush-200);
+  color: var(--color-cocoa-900);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-rose-600);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Textura de papel (sobreposição sutil) */
+.paper {
+  background-color: var(--color-paper);
+  background-image: var(--paper-grain);
+}
+.paper-ivory {
+  background-color: var(--color-ivory);
+  background-image: var(--paper-grain);
+}
+
+/* Tipografia editorial */
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--color-champagne-700);
+  font-weight: 600;
+}
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+.script {
+  font-family: var(--font-script);
+  font-weight: 400;
+  line-height: 1;
+}
+.prose-invite {
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 1.05rem + 0.9vw, 1.6rem);
+  line-height: 1.55;
+  color: var(--color-cocoa-700);
+  text-wrap: pretty;
+}
+
+/* Filete dourado com losango central */
+.rule-gold {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-champagne-400);
+}
+.rule-gold::before,
+.rule-gold::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, currentColor 40%, currentColor 60%, transparent);
+  opacity: 0.7;
+}
+
+/* Botões */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition:
+    transform 0.25s var(--ease-soft),
+    box-shadow 0.25s var(--ease-soft),
+    background-color 0.25s var(--ease-soft),
+    color 0.25s var(--ease-soft);
+  touch-action: manipulation;
+  cursor: pointer;
+  user-select: none;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-primary {
+  background: var(--color-cocoa-700);
+  color: var(--color-paper);
+  box-shadow: var(--shadow-soft);
+}
+@media (hover: hover) {
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-cocoa-900);
+    box-shadow: var(--shadow-lift);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--color-blush-100);
+  }
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--color-cocoa-700);
+  border: 1px solid color-mix(in srgb, var(--color-rose-400) 55%, transparent);
+}
+.btn-soft {
+  background: var(--color-blush-100);
+  color: var(--color-cocoa-700);
+}
+
+/* Campos de formulário */
+.field-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-cocoa-700);
+  margin-bottom: 0.375rem;
+}
+.field {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  background: var(--color-paper);
+  border: 1px solid color-mix(in srgb, var(--color-rose-400) 35%, transparent);
+  font-size: 1rem; /* evita zoom automático no iOS */
+  color: var(--color-cocoa-900);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.field::placeholder {
+  color: color-mix(in srgb, var(--color-cocoa-500) 70%, transparent);
+}
+.field:focus {
+  outline: none;
+  border-color: var(--color-rose-600);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-blush-200) 70%, transparent);
+}
+.field[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+/* Partículas decorativas */
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(var(--dx, 6px), var(--dy, -14px), 0) rotate(var(--rot, 8deg));
+  }
+}
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+@keyframes balloon-sway {
+  0%,
+  100% {
+    transform: rotate(-3deg) translateY(0);
+  }
+  50% {
+    transform: rotate(3deg) translateY(-8px);
+  }
+}
+@keyframes seal-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(201 143 146 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgb(201 143 146 / 0);
+  }
+}
+
+.animate-drift {
+  animation: drift var(--dur, 9s) ease-in-out infinite;
+}
+.animate-float-soft {
+  animation: float-soft 6s ease-in-out infinite;
+}
+.animate-balloon {
+  animation: balloon-sway 7s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Utilitários de layout com safe-area */
+.pt-safe {
+  padding-top: calc(var(--safe-top) + 1rem);
+}
+.pb-safe {
+  padding-bottom: calc(var(--safe-bottom) + 1rem);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Esconde visualmente mantendo acessível */
+.sr-only-focusable:not(:focus):not(:focus-within) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Painel administrativo */
+.admin-field {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.6rem 0.85rem;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--color-rose-400) 30%, #e8ddd3);
+  font-size: 1rem;
+  color: var(--color-cocoa-900);
+}
+.admin-field:focus {
+  outline: none;
+  border-color: var(--color-rose-600);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-blush-200) 70%, transparent);
+}
+.admin-panel {
+  background: #fff;
+  border: 1px solid #efe5dc;
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgb(74 51 51 / 0.04);
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
