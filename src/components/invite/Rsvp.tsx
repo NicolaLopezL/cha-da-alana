@@ -119,7 +119,7 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
     }
     startTransition(async () => {
       try {
-        const res = await rsvpAction({
+        const payload = {
           token: guest?.token ?? "",
           name: mode === "generic" ? name : "",
           phone: mode === "generic" ? phone : "",
@@ -128,7 +128,15 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
           message,
           website: honeypot.current?.value ?? "",
           turnstileToken: turnstileToken || undefined,
-        });
+        };
+        // Uma nova tentativa automática se a conexão falhar (repetir é seguro: a resposta é atualizada, nunca duplicada).
+        let res;
+        try {
+          res = await rsvpAction(payload);
+        } catch {
+          await new Promise((r) => setTimeout(r, 800));
+          res = await rsvpAction(payload);
+        }
         if (!res.ok) {
           setError({ text: res.error, field: res.field });
           return;
@@ -150,6 +158,15 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
           });
         }
         setView("thanks");
+        // Depois do agradecimento, leva a pessoa até a lista de enxoval (e mostra o lembrete da fralda).
+        const registry = document.getElementById("enxoval");
+        if (registry) {
+          window.setTimeout(() => {
+            const top = registry.getBoundingClientRect().top + window.scrollY - 16;
+            window.scrollTo({ top, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+            window.setTimeout(() => window.dispatchEvent(new CustomEvent("alana:registry-reminder")), prefersReducedMotion() ? 50 : 900);
+          }, 2600);
+        }
       } catch {
         setError({ text: "Sem conexão no momento. Verifique sua internet e tente de novo." });
       }

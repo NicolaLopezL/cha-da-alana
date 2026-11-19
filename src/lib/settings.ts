@@ -56,6 +56,7 @@ export const settingsSchema = z.object({
     "Também preparamos uma lista de enxoval com muito carinho, para quem desejar escolher um presente para nossa pequena.",
   ),
   registryUrl: optionalUrl.default(""),
+  registryReminder: text(220).default("Psiu… e a fraldinha, hein? 😉 Não esquece de levar um pacotinho de fralda junto com o presente — a Alana agradece!"),
   closingLines: z
     .array(text(280))
     .max(4)

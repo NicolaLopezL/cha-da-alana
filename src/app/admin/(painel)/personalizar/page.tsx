@@ -37,6 +37,12 @@ export default async function CustomizePage() {
               <TextArea label="Texto dos presentes" name="giftsText" defaultValue={s.giftsText} rows={3} maxLength={400} />
               <TextArea label="Texto do enxoval" name="registryText" defaultValue={s.registryText} rows={3} maxLength={400} />
             </div>
+            <Field
+              label="Lembrete no botão do enxoval"
+              name="registryReminder"
+              defaultValue={s.registryReminder}
+              maxLength={220}
+            />
             <div>
               <SubmitButton>Salvar mensagens</SubmitButton>
             </div>

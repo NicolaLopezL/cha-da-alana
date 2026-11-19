@@ -81,6 +81,21 @@ test.describe("Experiência do convite", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Alana" })).toBeInViewport();
   });
 
+  test("menu de atalhos leva direto à confirmação", async ({ page }) => {
+    await page.goto("/");
+    await openEnvelope(page);
+    const toggle = page.getByTestId("quicknav-toggle");
+    if (await toggle.isVisible()) {
+      // celular: abre a aba lateral (pode já estar aberta pela dica inicial)
+      await page.waitForTimeout(3200);
+      if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+      await page.locator("#quicknav-mobile").getByRole("button", { name: "Confirmar presença" }).click();
+    } else {
+      await page.getByTestId("quicknav-desktop").getByRole("button", { name: "Confirmar presença" }).click();
+    }
+    await expect(page.locator("#confirmar")).toBeInViewport();
+  });
+
   test("respeita movimento reduzido", async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: "reduce" });
     const page = await ctx.newPage();
@@ -297,6 +312,11 @@ test.describe("Convite personalizado e confirmação", () => {
     await expect(reg).toHaveAttribute("href", "https://example.com/enxoval-teste");
     await expect(reg).toHaveAttribute("target", "_blank");
     await expect(reg).toHaveAttribute("rel", /noopener/);
+    // Lembrete divertido da fralda ao tocar no botão do enxoval
+    const popup = context.waitForEvent("page");
+    await reg.click();
+    await (await popup).close();
+    await expect(g.getByTestId("registry-reminder")).toContainText("fralda");
     // Enxoval vem antes do local, e o local antes da confirmação
     const yLocal = (await g.locator("#local").boundingBox())!.y;
     const yReg = (await g.locator("#enxoval").boundingBox())!.y;
@@ -307,6 +327,12 @@ test.describe("Convite personalizado e confirmação", () => {
     // Convite individual: não mostra seletor de quantidade
     await g.getByTestId("rsvp-form").getByText("Vou, com certeza!").click();
     await expect(g.getByTestId("companions")).toHaveCount(0);
+
+    // Ao confirmar, o site rola sozinho até a lista de enxoval e mostra o lembrete
+    await g.getByTestId("rsvp-submit").click();
+    await expect(g.getByTestId("rsvp-thanks")).toBeVisible();
+    await expect(g.locator("#enxoval")).toBeInViewport({ timeout: 10_000 });
+    await expect(g.getByTestId("registry-reminder")).toContainText("fralda");
 
     // Limpa a configuração para os próximos projetos de teste
     await saveSettings(page, "/admin/evento", "Salvar data", { "Data do chá": "", "Horário de início": "" });

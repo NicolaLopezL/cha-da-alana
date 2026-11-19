@@ -95,3 +95,8 @@ export const IconArrowDown = ({ size, ...p }: P) => (
     <path d="M12 5v14M6.5 13.5 12 19l5.5-5.5" />
   </svg>
 );
+export const IconSparkle = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M12 3.5c.5 4.3 3.7 7.5 8 8-4.3.5-7.5 3.7-8 8-.5-4.3-3.7-7.5-8-8 4.3-.5 7.5-3.7 8-8Z" />
+  </svg>
+);

@@ -5,7 +5,8 @@ import type { PublicSettings } from "@/lib/settings";
 import type { GiftSuggestion, PublicGuest } from "@/lib/types";
 import { Envelope } from "./Envelope";
 import { Hero } from "./Hero";
-import { IconMusic, IconMute } from "./Icons";
+import { IconCalendar, IconGift, IconHeart, IconMusic, IconMute, IconPin, IconSparkle } from "./Icons";
+import { QuickNav, type QuickNavItem } from "./QuickNav";
 import { RsvpSection } from "./Rsvp";
 import {
   Closing,
@@ -134,6 +135,15 @@ export function InviteExperience({ settings: s, guest: initialGuest, gifts, turn
 
   const decorations = s.showDecorations && !lowPower;
 
+  // Atalhos do HUD lateral: só seções que existem nesta página
+  const navItems: QuickNavItem[] = [
+    { id: "data", label: "Data", icon: <IconCalendar size={20} /> },
+    ...(s.showRegistry && s.registryUrl ? [{ id: "enxoval", label: "Presente", icon: <IconGift size={20} /> }] : []),
+    ...(s.showLocation ? [{ id: "local", label: "Endereço", icon: <IconPin size={20} /> }] : []),
+    { id: "confirmar", label: "Confirmar presença", icon: <IconHeart size={20} /> },
+    ...(s.showGifts && gifts.length > 0 ? [{ id: "presentes", label: "Sugestões de mimos", icon: <IconSparkle size={20} /> }] : []),
+  ];
+
   return (
     <>
       <a href="#confirmar" className="sr-only-focusable fixed left-4 top-4 z-[60] rounded-full bg-paper px-4 py-2 text-sm shadow">
@@ -171,6 +181,8 @@ export function InviteExperience({ settings: s, guest: initialGuest, gifts, turn
         </div>
         <Closing s={s} onReplay={replay} />
       </main>
+
+      <QuickNav items={navItems} visible={opened && !envelopeVisible} />
 
       {musicEnabled && (
         <>

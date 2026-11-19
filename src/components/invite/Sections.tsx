@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   dateParts,
   eventInstant,
@@ -254,12 +254,31 @@ export function GiftsSection({ s, gifts }: { s: PublicSettings; gifts: GiftSugge
 
 /* Cena 10 — lista de enxoval (site externo, separada das sugestões) */
 export function RegistrySection({ s }: { s: PublicSettings }) {
+  const [tip, setTip] = useState(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const showTip = (ms?: number) => {
+    setTip(true);
+    clearTimeout(hideTimer.current);
+    if (ms) hideTimer.current = setTimeout(() => setTip(false), ms);
+  };
+  useEffect(() => () => clearTimeout(hideTimer.current), []);
+  // Disparado após a confirmação de presença
+  useEffect(() => {
+    const onReminder = () => {
+      setTip(true);
+      clearTimeout(hideTimer.current);
+      hideTimer.current = setTimeout(() => setTip(false), 10000);
+    };
+    window.addEventListener("alana:registry-reminder", onReminder);
+    return () => window.removeEventListener("alana:registry-reminder", onReminder);
+  }, []);
+
   if (!s.registryUrl) return null;
   return (
     <section id="enxoval" className="px-4 py-10 sm:py-16" aria-labelledby="enxoval-title">
       <div
         data-reveal
-        className="relative mx-auto max-w-3xl overflow-hidden rounded-[32px] bg-blush-100 px-6 py-14 text-center sm:px-14 sm:py-16"
+        className="relative mx-auto max-w-3xl overflow-hidden rounded-[32px] bg-blush-100 px-6 pb-14 pt-14 text-center sm:px-14 sm:py-16"
       >
         <div
           className="pointer-events-none absolute inset-0 opacity-50"
@@ -273,16 +292,44 @@ export function RegistrySection({ s }: { s: PublicSettings }) {
           {s.registryTitle}
         </h2>
         <p className="relative mx-auto mt-4 max-w-[40ch] text-[1rem] leading-relaxed text-cocoa-700/85">{s.registryText}</p>
-        <a
-          href={s.registryUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-primary relative mt-8"
-          data-testid="registry-link"
-        >
-          Ver lista de enxoval
-          <IconExternal size={16} />
-        </a>
+
+        <div className="relative mx-auto mt-10 w-full max-w-sm">
+          {/* lembrete da fralda (aparece ao chegar perto, focar ou tocar no botão) */}
+          <div
+            role="status"
+            aria-live="polite"
+            className={`absolute bottom-[calc(100%+14px)] left-1/2 w-[min(19rem,88vw)] -translate-x-1/2 transition-all duration-300 ease-[var(--ease-soft)] ${
+              tip ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none translate-y-2 scale-95 opacity-0"
+            }`}
+            data-testid="registry-reminder"
+          >
+            {tip && s.registryReminder && (
+              <p className="paper relative rounded-2xl px-4 py-3 text-[0.95rem] leading-snug text-cocoa-700 shadow-[var(--shadow-lift)] ring-1 ring-champagne-400/30">
+                {s.registryReminder}
+                <span
+                  aria-hidden="true"
+                  className="paper absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 ring-1 ring-champagne-400/30 [clip-path:polygon(100%_0,100%_100%,0_100%)]"
+                />
+              </p>
+            )}
+          </div>
+          <a
+            href={s.registryUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onPointerEnter={(e) => e.pointerType === "mouse" && showTip()}
+            onPointerLeave={(e) => e.pointerType === "mouse" && setTip(false)}
+            onFocus={() => showTip()}
+            onBlur={() => setTip(false)}
+            onClick={() => showTip(9000)}
+            className="btn btn-primary w-full !min-h-[60px] !gap-3 !px-8 !text-[1.05rem] shadow-[var(--shadow-lift)]"
+            data-testid="registry-link"
+          >
+            <IconGift size={22} />
+            Ver lista de enxoval
+            <IconExternal size={17} />
+          </a>
+        </div>
       </div>
     </section>
   );

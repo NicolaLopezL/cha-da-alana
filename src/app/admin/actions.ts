@@ -408,6 +408,7 @@ const FIELD_LABELS: Record<string, string> = {
   registryTitle: "Título do enxoval",
   registryText: "Texto do enxoval",
   registryUrl: "Link da lista de enxoval",
+  registryReminder: "Lembrete do enxoval",
   closingLines: "Mensagem de encerramento",
   signature: "Assinatura",
   thanksYes: "Agradecimento (vai)",
