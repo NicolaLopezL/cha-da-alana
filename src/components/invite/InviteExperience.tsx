@@ -82,6 +82,7 @@ export function InviteExperience({ settings: s, guest: initialGuest, gifts, turn
     try {
       sessionStorage.setItem(openedKey(token), "1");
     } catch {}
+    window.scrollTo(0, 0);
     setEnvelopeVisible(false);
     setOpened(true);
     requestAnimationFrame(() => document.getElementById("alana-title")?.focus({ preventScroll: true }));
@@ -91,6 +92,11 @@ export function InviteExperience({ settings: s, guest: initialGuest, gifts, turn
     try {
       sessionStorage.removeItem(openedKey(token));
     } catch {}
+    // Volta ao topo antes de recarregar, para rever a experiência desde o início.
+    try {
+      history.scrollRestoration = "manual";
+    } catch {}
+    window.scrollTo(0, 0);
     window.location.reload();
   }, [token]);
 

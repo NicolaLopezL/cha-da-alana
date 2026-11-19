@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { gsap, prefersReducedMotion, useGSAP } from "./gsap";
 import { Particles, SealArt } from "./Ornaments";
 
@@ -23,21 +23,30 @@ export function Envelope({ guestName, message, showDecorations, onOpenStart, onO
   const scope = useRef<HTMLDivElement>(null);
   const [opening, setOpening] = useState(false);
   const tlRef = useRef<gsap.core.Timeline | null>(null);
+  const introRef = useRef<gsap.core.Timeline | null>(null);
+  const floatRef = useRef<gsap.core.Tween | null>(null);
+  const ringRef = useRef<gsap.core.Tween | null>(null);
 
   useGSAP(
     () => {
       const q = gsap.utils.selector(scope);
+      // Perspectiva própria em cada peça que gira: as camadas do envelope ficam num plano só
+      // (sem preserve-3d nos contêineres), o que elimina o "pisca-pisca" entre camadas.
+      gsap.set(q("[data-env-tilt]"), { transformPerspective: 1200 });
+      gsap.set(q("[data-env-flap]"), { transformPerspective: 900 });
       if (prefersReducedMotion()) return;
 
       // Entrada suave
-      gsap.from(q("[data-env-intro]"), { opacity: 0, y: 14, duration: 1.1, stagger: 0.12, delay: 0.15 });
-      gsap.from(q("[data-env-float]"), { opacity: 0, y: 30, scale: 0.96, duration: 1.4, ease: "power3.out", delay: 0.3 });
+      introRef.current = gsap
+        .timeline()
+        .from(q("[data-env-intro]"), { opacity: 0, y: 14, duration: 1.1, stagger: 0.12, delay: 0.15 }, 0)
+        .from(q("[data-env-float]"), { opacity: 0, y: 30, scale: 0.96, duration: 1.4, ease: "power3.out" }, 0.3);
 
       // Flutuação quase imperceptível
-      gsap.to(q("[data-env-float]"), { y: -7, duration: 3.4, ease: "sine.inOut", yoyo: true, repeat: -1, delay: 1.7 });
+      floatRef.current = gsap.to(q("[data-env-float]"), { y: -7, duration: 3.4, ease: "sine.inOut", yoyo: true, repeat: -1, delay: 1.7 });
 
       // Brilho discreto no lacre chamando o toque
-      gsap.to(q("[data-seal-ring]"), {
+      ringRef.current = gsap.to(q("[data-seal-ring]"), {
         scale: 1.35,
         opacity: 0,
         duration: 2.2,
@@ -91,7 +100,10 @@ export function Envelope({ guestName, message, showDecorations, onOpenStart, onO
     }
 
     const card = q("[data-env-card]")[0] as HTMLElement;
-    gsap.killTweensOf(q("[data-env-float], [data-seal-ring]"));
+    // Toque durante a entrada: conclui a entrada (em vez de cortá-la pela metade).
+    introRef.current?.progress(1).kill();
+    floatRef.current?.kill();
+    ringRef.current?.kill();
     gsap.set(q("[data-seal-ring]"), { opacity: 0 });
 
     const tl = gsap.timeline({ onComplete: done });
@@ -105,6 +117,7 @@ export function Envelope({ guestName, message, showDecorations, onOpenStart, onO
       // 2. o lacre se rompe em duas metades
       .to(q("[data-seal-left]"), { xPercent: -55, yPercent: 90, rotation: -32, opacity: 0, duration: 0.75, ease: "power2.in" }, ">-0.04")
       .to(q("[data-seal-right]"), { xPercent: 55, yPercent: 100, rotation: 26, opacity: 0, duration: 0.75, ease: "power2.in" }, "<")
+      .to(q("[data-seal-shadow]"), { opacity: 0, duration: 0.3 }, "<")
       .to(q("[data-env-intro]"), { opacity: 0, y: -12, duration: 0.45, ease: "power2.in", stagger: 0.05 }, "<")
       .to(q("[data-env-float]"), { y: 0, duration: 0.6, ease: "power2.out" }, "<")
       .to(q("[data-env-tilt]"), { rotationX: 0, rotationY: 0, duration: 0.6, ease: "power2.out" }, "<")
@@ -147,6 +160,16 @@ export function Envelope({ guestName, message, showDecorations, onOpenStart, onO
       .to(q("[data-env-particles]"), { opacity: 0, duration: 0.6 }, "grow")
       .to(root, { opacity: 0, duration: 0.55, ease: "power1.inOut" }, ">-0.25");
   }, [opening, onOpenStart, onOpened]);
+
+  // Toque feito antes do JavaScript carregar (registrado pelo script inline): abre assim que possível.
+  useEffect(() => {
+    const w = window as Window & { __alanaOpenRequested?: boolean; __alanaHydrated?: boolean };
+    w.__alanaHydrated = true;
+    if (!w.__alanaOpenRequested) return;
+    w.__alanaOpenRequested = false;
+    const id = requestAnimationFrame(() => open());
+    return () => cancelAnimationFrame(id);
+  }, [open]);
 
   const label = guestName ? `Abrir o convite de ${guestName}` : "Abrir o convite";
 
@@ -192,11 +215,11 @@ export function Envelope({ guestName, message, showDecorations, onOpenStart, onO
       </div>
 
       {/* envelope */}
-      <div data-env-float className="relative z-10 w-[min(86vw,440px)]" style={{ transformStyle: "preserve-3d" }}>
-        <div data-env-tilt className="relative" style={{ transformStyle: "preserve-3d" }}>
+      <div data-env-float className="relative z-10 w-[min(86vw,440px)]" style={{ willChange: "transform, opacity" }}>
+        <div data-env-tilt className="relative" style={{ willChange: "transform" }}>
           <div
             className="relative aspect-[10/7] w-full cursor-pointer select-none"
-            style={{ transformStyle: "preserve-3d" }}
+            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             onClick={open}
             data-testid="envelope"
           >
@@ -336,8 +359,14 @@ export function Envelope({ guestName, message, showDecorations, onOpenStart, onO
             >
               <span data-seal-ring className="absolute inset-0 rounded-full border border-rose-400/60" aria-hidden="true" />
               <span
+                data-seal-shadow
+                aria-hidden="true"
+                className="absolute inset-[6%] translate-y-[6%] rounded-full"
+                style={{ background: "radial-gradient(closest-side, rgb(74 51 51 / .28), transparent)" }}
+              />
+              <span
                 data-seal-left
-                className="absolute inset-0 drop-shadow-[0_4px_6px_rgba(74,51,51,0.28)]"
+                className="absolute inset-0"
                 style={{ clipPath: "polygon(0 0,52% 0,47% 22%,55% 40%,46% 58%,53% 78%,48% 100%,0 100%)" }}
                 aria-hidden="true"
               >
@@ -345,7 +374,7 @@ export function Envelope({ guestName, message, showDecorations, onOpenStart, onO
               </span>
               <span
                 data-seal-right
-                className="absolute inset-0 drop-shadow-[0_4px_6px_rgba(74,51,51,0.28)]"
+                className="absolute inset-0"
                 style={{ clipPath: "polygon(52% 0,100% 0,100% 100%,48% 100%,53% 78%,46% 58%,55% 40%,47% 22%)" }}
                 aria-hidden="true"
               >

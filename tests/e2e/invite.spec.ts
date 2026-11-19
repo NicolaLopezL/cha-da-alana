@@ -36,6 +36,51 @@ test.describe("Experiência do convite", () => {
     expect(errors).toEqual([]);
   });
 
+  test("toque antes do carregamento e durante a entrada abre o envelope por completo", async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    // Toque assim que o HTML aparece (antes do JavaScript carregar)
+    await page.goto("/", { waitUntil: "commit" });
+    await page.locator("[data-testid=seal]").waitFor({ state: "attached" });
+    await page.locator("[data-testid=seal]").dispatchEvent("click");
+    await expect(page.getByTestId("envelope-scene")).toBeHidden({ timeout: 20_000 });
+    await expect(page.getByRole("heading", { level: 1, name: "Alana" })).toBeVisible();
+
+    // Toque logo no início da animação de entrada
+    await page.evaluate(() => sessionStorage.clear());
+    await page.reload({ waitUntil: "networkidle" });
+    await page.getByTestId("seal").click({ force: true });
+    await page.waitForTimeout(1300);
+    // a entrada foi concluída, não cortada pela metade
+    expect(Number(await page.locator("[data-env-float]").evaluate((el) => getComputedStyle(el).opacity))).toBe(1);
+    await expect(page.getByTestId("envelope-scene")).toBeHidden({ timeout: 15_000 });
+    expect(errors).toEqual([]);
+  });
+
+  test("camadas do envelope num plano só (sem pisca-pisca 3D)", async ({ page }) => {
+    await page.goto("/");
+    const styles = await page.evaluate(() =>
+      ["[data-env-float]", "[data-env-tilt]", "[data-testid=envelope]"].map(
+        (s) => getComputedStyle(document.querySelector(s)!).transformStyle,
+      ),
+    );
+    expect(styles).toEqual(["flat", "flat", "flat"]);
+  });
+
+  test("ver a abertura de novo começa do topo", async ({ page }) => {
+    await page.goto("/");
+    await openEnvelope(page);
+    await page.locator("footer").scrollIntoViewIfNeeded();
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
+    await page.getByRole("button", { name: "Ver a abertura do envelope de novo" }).click();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByTestId("envelope-scene")).toBeVisible();
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await page.getByTestId("seal").click({ force: true });
+    await expect(page.getByTestId("envelope-scene")).toBeHidden({ timeout: 15_000 });
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(page.getByRole("heading", { level: 1, name: "Alana" })).toBeInViewport();
+  });
+
   test("respeita movimento reduzido", async ({ browser }) => {
     const ctx = await browser.newContext({ reducedMotion: "reduce" });
     const page = await ctx.newPage();
