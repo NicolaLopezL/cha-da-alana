@@ -135,6 +135,11 @@ export async function submitRsvp(raw: unknown): Promise<RsvpResult> {
     }
     const key = nameKey(data.name);
     guest = await store.findGuestByNameKey(key, data.phone);
+    if (guest && guest.maxPeople < settings.genericMaxPeople) {
+      // Respostas antigas do convite aberto acompanham o limite atual.
+      await store.updateGuest(guest.id, { maxPeople: settings.genericMaxPeople });
+      guest = { ...guest, maxPeople: settings.genericMaxPeople };
+    }
     if (!guest) {
       const created = await store.createGuest(
         {

@@ -72,8 +72,9 @@ export const settingsSchema = z.object({
   whatsappTemplate: text(400).default("Olá! Aqui é {nome}. Recebi o convite do Chá da Alana 💗"),
 
   // Convites
-  genericInviteEnabled: z.boolean().default(false),
-  genericMaxPeople: z.number().int().min(1).max(10).default(2),
+  genericInviteEnabled: z.boolean().default(true),
+  /** Limite de segurança do convite aberto (o próprio convidado escolhe a quantidade até este teto). */
+  genericMaxPeople: z.number().int().min(1).max(20).default(20),
 
   // Mídia e elementos opcionais
   bearImageUrl: z.string().trim().max(2000).default(""),

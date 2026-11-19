@@ -163,10 +163,11 @@ export function InviteExperience({ settings: s, guest: initialGuest, gifts, turn
           <InviteText lines={s.inviteLines.filter(Boolean)} />
           <DateSection s={s} />
           {s.showLocation && <LocationSection s={s} />}
+          {/* Enxoval logo após o local, para ninguém deixar de ver */}
+          {s.showRegistry && <RegistrySection s={s} />}
           <RsvpSection s={s} guest={guest} turnstileSiteKey={turnstileSiteKey} onGuestResolved={setGuest} />
           {s.showWhatsapp && <WhatsappSection s={s} guestName={guest?.name ?? ""} />}
           {s.showGifts && <GiftsSection s={s} gifts={gifts} />}
-          {s.showRegistry && <RegistrySection s={s} />}
         </div>
         <Closing s={s} onReplay={replay} />
       </main>

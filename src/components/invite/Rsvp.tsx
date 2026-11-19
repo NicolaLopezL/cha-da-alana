@@ -42,6 +42,19 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
   const errorRef = useRef<HTMLParagraphElement>(null);
   const uid = useId();
   const onToken = useCallback((t: string) => setTurnstileToken(t), []);
+  const [savedToken, setSavedToken] = useState("");
+
+  // Quem já respondeu pelo convite aberto neste aparelho pode rever/alterar a resposta.
+  useEffect(() => {
+    if (mode !== "generic") return;
+    let t = "";
+    try {
+      t = localStorage.getItem("alana-invite-token") ?? "";
+    } catch {}
+    if (!/^[A-Za-z0-9_-]{20,64}$/.test(t)) return;
+    const id = requestAnimationFrame(() => setSavedToken(t));
+    return () => cancelAnimationFrame(id);
+  }, [mode]);
 
   useEffect(() => {
     if (view !== "thanks" || !thanksRef.current) return;
@@ -213,6 +226,16 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
               </div>
             ) : (
               <div className="space-y-4">
+                {savedToken && (
+                  <a
+                    href={`/convite/${savedToken}`}
+                    className="block rounded-2xl bg-blush-50 px-4 py-3 text-center text-sm text-cocoa-700"
+                    data-testid="saved-answer"
+                  >
+                    Você já respondeu neste aparelho. <span className="font-semibold text-rose-600 underline underline-offset-2">Ver ou alterar minha resposta</span>
+                  </a>
+                )}
+                <p className="text-center text-sm text-cocoa-500">Conte quem é você e quantas pessoas vão com você.</p>
                 <div>
                   <label htmlFor={`${uid}-name`} className="field-label">
                     Seu nome completo <span className="text-rose-600" aria-hidden="true">*</span>
@@ -323,7 +346,7 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
                     <IconPlus />
                   </button>
                 </div>
-                <p className="mt-1 text-xs text-cocoa-500">Máximo de {maxPeople} pessoas neste convite.</p>
+                {mode === "personal" && <p className="mt-1 text-xs text-cocoa-500">Máximo de {maxPeople} pessoas neste convite.</p>}
               </div>
             )}
 

@@ -71,12 +71,11 @@ export default async function EventPage() {
           </ActionForm>
         </Panel>
 
-        <Panel title="Convite aberto" description="Permite que qualquer pessoa com o link principal (sem nome) confirme digitando o próprio nome. Respostas repetidas do mesmo nome e telefone atualizam a anterior.">
+        <Panel title="Convite aberto" description="Com isto ligado, qualquer pessoa com o link principal confirma digitando o próprio nome e escolhendo quantas pessoas vão com ela — vocês não precisam cadastrar ninguém. Cada resposta aparece em Convidados automaticamente. Se a mesma pessoa responder de novo (mesmo nome e telefone), a resposta anterior é atualizada.">
           <ActionForm action={saveSettingsAction} booleans={["genericInviteEnabled"]} className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Toggle label="Aceitar confirmações no convite aberto" name="genericInviteEnabled" defaultChecked={s.genericInviteEnabled} />
             </div>
-            <Field label="Máximo de pessoas por resposta" name="genericMaxPeople" type="number" min={1} max={10} defaultValue={s.genericMaxPeople} />
             <div className="sm:col-span-2">
               <SubmitButton>Salvar</SubmitButton>
             </div>

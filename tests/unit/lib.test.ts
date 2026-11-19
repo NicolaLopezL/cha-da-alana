@@ -55,7 +55,8 @@ describe("configurações", () => {
     expect(defaultSettings.address).toBe("");
     expect(defaultSettings.fatherPhone).toBe("");
     expect(defaultSettings.registryUrl).toBe("");
-    expect(defaultSettings.genericInviteEnabled).toBe(false);
+    expect(defaultSettings.genericInviteEnabled).toBe(true); // convidados confirmam sem cadastro prévio
+    expect(defaultSettings.genericMaxPeople).toBe(20);
   });
   it("adiciona DDI 55 e recusa telefones inválidos", () => {
     expect(settingsSchema.parse({ motherPhone: "(11) 98888-7777" }).motherPhone).toBe("5511988887777");

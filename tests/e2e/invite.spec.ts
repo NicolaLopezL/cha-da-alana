@@ -186,33 +186,11 @@ test.describe("Convite personalizado e confirmação", () => {
     await expect(items.first()).toContainText("não poderá comparecer");
   });
 
-  test("convite aberto: desativado por padrão; ativado aceita nome e evita duplicidade", async ({ page, context }, testInfo) => {
-    await login(page);
-    await page.goto("/admin/evento");
-    const generic = page.locator("form", { hasText: "Aceitar confirmações no convite aberto" });
-    const toggle = generic.getByLabel("Aceitar confirmações no convite aberto");
-    if (await toggle.isChecked()) {
-      await generic.getByText("Aceitar confirmações no convite aberto").click();
-      await generic.getByRole("button", { name: "Salvar" }).click();
-      await expect(generic.getByTestId("form-feedback")).toContainText(/salvas/);
-    }
-
-    const visitor = await context.newPage();
-    await visitor.goto("/");
-    await openEnvelope(visitor);
-    await expect(visitor.locator("#confirmar")).toContainText("use o link pessoal");
-    await expect(visitor.getByTestId("rsvp-form")).toHaveCount(0);
-
-    // Ativa o convite aberto
-    await page.reload();
-    await generic.getByText("Aceitar confirmações no convite aberto").click();
-    await generic.getByLabel("Máximo de pessoas por resposta").fill("2");
-    await generic.getByRole("button", { name: "Salvar" }).click();
-    await expect(generic.getByTestId("form-feedback")).toContainText(/salvas/);
-
+  test("convite aberto vem ligado: a pessoa digita o nome e escolhe quantas pessoas vão, sem duplicar", async ({ page, context, browser }, testInfo) => {
     const name = uniq(testInfo, "Joana Prado");
-    for (const people of [2, 1]) {
-      const v = await context.browser()!.newContext();
+    // Sem nenhum cadastro feito pelos papais
+    for (const people of [7, 1]) {
+      const v = await browser.newContext();
       const p = await v.newPage();
       await p.goto("/");
       await openEnvelope(p);
@@ -221,22 +199,41 @@ test.describe("Convite personalizado e confirmação", () => {
       await form.getByLabel("Seu nome completo").fill(name);
       await form.getByLabel(/WhatsApp/).fill("(11) 98888-7777");
       await form.getByText("Vou, com certeza!").click();
-      if (people === 2) await form.getByRole("button", { name: "Aumentar" }).click();
+      for (let i = 1; i < people; i++) await form.getByRole("button", { name: "Aumentar" }).click();
+      await expect(form.getByTestId("people-count")).toHaveText(String(people));
+      await expect(form).not.toContainText("Máximo de");
       await form.getByTestId("rsvp-submit").click();
-      await expect(p.getByTestId("rsvp-thanks")).toContainText(people === 1 ? "1 pessoa" : "2 pessoas");
+      await expect(p.getByTestId("rsvp-thanks")).toContainText(people === 1 ? "1 pessoa" : `${people} pessoas`);
       // Ganha um link pessoal para editar depois
       await expect(p).toHaveURL(/\/convite\/[A-Za-z0-9_-]{20,}/);
+      // Voltando ao convite geral no mesmo aparelho, aparece o atalho para a própria resposta
+      await p.goto("/");
+      await expect(p.getByTestId("saved-answer")).toBeVisible();
       await v.close();
     }
 
+    await login(page);
     await page.goto(`/admin/convidados?q=${encodeURIComponent(name)}`);
     const rows = page.getByTestId("guest-row").filter({ hasText: name });
     await expect(rows).toHaveCount(1); // mesma pessoa, mesma linha
     await expect(rows.first()).toContainText("1 confirmados");
     await expect(rows.first()).toContainText("convite aberto");
 
-    // Desativa novamente para não afetar outros testes
+    // Os papais ainda podem desligar o convite aberto
     await page.goto("/admin/evento");
+    const generic = page.locator("form", { hasText: "Aceitar confirmações no convite aberto" });
+    await expect(generic.getByLabel("Aceitar confirmações no convite aberto")).toBeChecked();
+    await generic.getByText("Aceitar confirmações no convite aberto").click();
+    await generic.getByRole("button", { name: "Salvar" }).click();
+    await expect(generic.getByTestId("form-feedback")).toContainText(/salvas/);
+    const visitor = await context.newPage();
+    await visitor.goto("/");
+    await openEnvelope(visitor);
+    await expect(visitor.locator("#confirmar")).toContainText("use o link pessoal");
+    await expect(visitor.getByTestId("rsvp-form")).toHaveCount(0);
+
+    // Religa para os próximos testes
+    await page.reload();
     await generic.getByText("Aceitar confirmações no convite aberto").click();
     await generic.getByRole("button", { name: "Salvar" }).click();
     await expect(generic.getByTestId("form-feedback")).toContainText(/salvas/);
@@ -296,6 +293,12 @@ test.describe("Convite personalizado e confirmação", () => {
     await expect(reg).toHaveAttribute("href", "https://example.com/enxoval-teste");
     await expect(reg).toHaveAttribute("target", "_blank");
     await expect(reg).toHaveAttribute("rel", /noopener/);
+    // Enxoval fica logo depois do local, antes da confirmação
+    const yLocal = (await g.locator("#local").boundingBox())!.y;
+    const yReg = (await g.locator("#enxoval").boundingBox())!.y;
+    const yRsvp = (await g.locator("#confirmar").boundingBox())!.y;
+    expect(yLocal).toBeLessThan(yReg);
+    expect(yReg).toBeLessThan(yRsvp);
 
     // Convite individual: não mostra seletor de quantidade
     await g.getByTestId("rsvp-form").getByText("Vou, com certeza!").click();
