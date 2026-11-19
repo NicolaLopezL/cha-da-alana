@@ -154,11 +154,14 @@ test.describe("Convite personalizado e confirmação", () => {
     await expect(form.getByTestId("rsvp-error")).toContainText("Escolha uma das opções");
 
     await form.getByText("Vou, com certeza!").click();
-    const plus = form.getByRole("button", { name: "Aumentar" });
-    await plus.click();
-    await plus.click();
-    await expect(form.getByTestId("people-count")).toHaveText("3");
+    // Campo de acompanhantes: digitar acima do limite fica no máximo do convite
+    await form.getByTestId("companions").fill("9");
+    await expect(form.getByTestId("people-count")).toContainText("Total: 3 pessoas");
+    const plus = form.getByRole("button", { name: "Aumentar acompanhantes" });
     await expect(plus).toBeDisabled(); // limite do convite
+    await form.getByRole("button", { name: "Diminuir acompanhantes" }).click();
+    await plus.click();
+    await expect(form.getByTestId("people-count")).toContainText("Total: 3 pessoas");
     await form.getByLabel(/recadinho/).fill("Mal posso esperar!");
     await form.getByTestId("rsvp-submit").click();
 
@@ -198,9 +201,10 @@ test.describe("Convite personalizado e confirmação", () => {
       await form.scrollIntoViewIfNeeded();
       await form.getByLabel("Seu nome completo").fill(name);
       await form.getByLabel(/WhatsApp/).fill("(11) 98888-7777");
-      await form.getByText("Vou, com certeza!").click();
-      for (let i = 1; i < people; i++) await form.getByRole("button", { name: "Aumentar" }).click();
-      await expect(form.getByTestId("people-count")).toHaveText(String(people));
+      // O campo de acompanhantes já aparece; digitar o número marca "vou"
+      await form.getByLabel("Quantas pessoas vão com você?").fill(String(people - 1));
+      await expect(form.getByText("Vou, com certeza!")).toBeVisible();
+      await expect(form.getByTestId("people-count")).toContainText(`Total: ${people} ${people === 1 ? "pessoa" : "pessoas"}`);
       await expect(form).not.toContainText("Máximo de");
       await form.getByTestId("rsvp-submit").click();
       await expect(p.getByTestId("rsvp-thanks")).toContainText(people === 1 ? "1 pessoa" : `${people} pessoas`);
@@ -293,16 +297,16 @@ test.describe("Convite personalizado e confirmação", () => {
     await expect(reg).toHaveAttribute("href", "https://example.com/enxoval-teste");
     await expect(reg).toHaveAttribute("target", "_blank");
     await expect(reg).toHaveAttribute("rel", /noopener/);
-    // Enxoval fica logo depois do local, antes da confirmação
+    // Enxoval vem antes do local, e o local antes da confirmação
     const yLocal = (await g.locator("#local").boundingBox())!.y;
     const yReg = (await g.locator("#enxoval").boundingBox())!.y;
     const yRsvp = (await g.locator("#confirmar").boundingBox())!.y;
-    expect(yLocal).toBeLessThan(yReg);
-    expect(yReg).toBeLessThan(yRsvp);
+    expect(yReg).toBeLessThan(yLocal);
+    expect(yLocal).toBeLessThan(yRsvp);
 
     // Convite individual: não mostra seletor de quantidade
     await g.getByTestId("rsvp-form").getByText("Vou, com certeza!").click();
-    await expect(g.getByRole("button", { name: "Aumentar" })).toHaveCount(0);
+    await expect(g.getByTestId("companions")).toHaveCount(0);
 
     // Limpa a configuração para os próximos projetos de teste
     await saveSettings(page, "/admin/evento", "Salvar data", { "Data do chá": "", "Horário de início": "" });

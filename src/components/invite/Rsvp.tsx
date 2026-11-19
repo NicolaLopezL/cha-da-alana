@@ -29,6 +29,15 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
   const [attending, setAttending] = useState<RsvpAttending | null>(guest?.rsvp?.attending ?? null);
   const [people, setPeople] = useState<number>(guest?.rsvp?.people || 1);
   const [message, setMessage] = useState(guest?.rsvp?.message ?? "");
+  const maxCompanions = Math.max(0, maxPeople - 1);
+  const companions = Math.min(maxCompanions, Math.max(0, people - 1));
+  const [companionsText, setCompanionsText] = useState(String(companions));
+  const setCompanions = (n: number) => {
+    const v = Math.min(maxCompanions, Math.max(0, n));
+    setPeople(1 + v);
+    setCompanionsText(String(v));
+    if (!attending) setAttending("yes");
+  };
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -313,40 +322,67 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
               </div>
             </fieldset>
 
-            {attending === "yes" && maxPeople > 1 && (
-              <div className="text-center">
-                <span id={`${uid}-people-label`} className="field-label">
-                  Quantas pessoas, contando com você?
-                </span>
-                <div className="mt-2 inline-flex items-center gap-4" role="group" aria-labelledby={`${uid}-people-label`}>
+            {attending !== "no" && maxPeople > 1 && (
+              <div
+                className={`rounded-2xl border border-blush-200 bg-blush-50/70 px-4 py-5 text-center transition-opacity duration-300 ${
+                  attending === "yes" ? "" : "opacity-70"
+                }`}
+              >
+                <label htmlFor={`${uid}-companions`} className="field-label !mb-1 !text-[1rem]">
+                  Quantas pessoas vão com você?
+                </label>
+                <p id={`${uid}-companions-help`} className="mb-3 text-xs text-cocoa-500">
+                  Sem contar você. Coloque 0 se for só você.
+                </p>
+                <div className="inline-flex items-center gap-3">
                   <button
                     type="button"
-                    className="flex h-12 w-12 items-center justify-center rounded-full border border-blush-300 text-cocoa-700 transition active:scale-95 disabled:opacity-40"
-                    onClick={() => setPeople((p) => Math.max(1, p - 1))}
-                    disabled={people <= 1}
-                    aria-label="Diminuir"
+                    className="flex h-12 w-12 items-center justify-center rounded-full border border-blush-300 bg-paper text-cocoa-700 transition active:scale-95 disabled:opacity-40"
+                    onClick={() => setCompanions(companions - 1)}
+                    disabled={companions <= 0}
+                    aria-label="Diminuir acompanhantes"
                   >
                     <IconMinus />
                   </button>
-                  <output
-                    className="display tabular w-12 text-center text-4xl text-cocoa-700"
-                    aria-live="polite"
-                    aria-describedby={fieldErr("people")}
-                    data-testid="people-count"
-                  >
-                    {Math.min(people, maxPeople)}
-                  </output>
+                  <input
+                    id={`${uid}-companions`}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="off"
+                    maxLength={2}
+                    value={companionsText}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+                      setCompanionsText(digits);
+                      setPeople(1 + Math.min(maxCompanions, Number(digits || 0)));
+                      if (!attending) setAttending("yes");
+                    }}
+                    onFocus={(e) => {
+                      e.target.select();
+                      if (!attending) setAttending("yes");
+                    }}
+                    onBlur={() => setCompanionsText(String(people - 1))}
+                    aria-describedby={`${uid}-companions-help ${fieldErr("people") ?? ""}`}
+                    className="field display tabular !h-14 !w-20 !px-2 text-center !text-3xl"
+                    data-testid="companions"
+                  />
                   <button
                     type="button"
-                    className="flex h-12 w-12 items-center justify-center rounded-full border border-blush-300 text-cocoa-700 transition active:scale-95 disabled:opacity-40"
-                    onClick={() => setPeople((p) => Math.min(maxPeople, p + 1))}
-                    disabled={people >= maxPeople}
-                    aria-label="Aumentar"
+                    className="flex h-12 w-12 items-center justify-center rounded-full border border-blush-300 bg-paper text-cocoa-700 transition active:scale-95 disabled:opacity-40"
+                    onClick={() => setCompanions(companions + 1)}
+                    disabled={companions >= maxCompanions}
+                    aria-label="Aumentar acompanhantes"
                   >
                     <IconPlus />
                   </button>
                 </div>
-                {mode === "personal" && <p className="mt-1 text-xs text-cocoa-500">Máximo de {maxPeople} pessoas neste convite.</p>}
+                <p className="mt-3 text-sm font-medium text-cocoa-700" aria-live="polite" data-testid="people-count">
+                  Total: {people} {people === 1 ? "pessoa" : "pessoas"} (você{companions > 0 ? ` + ${companions}` : ""})
+                </p>
+                {mode === "personal" && (
+                  <p className="mt-1 text-xs text-cocoa-500">Este convite permite até {maxCompanions} acompanhante{maxCompanions === 1 ? "" : "s"}.</p>
+                )}
               </div>
             )}
 
