@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ActionForm, SubmitButton, TextArea, Toggle } from "@/components/admin/ui";
 import { formatDateTime, PageHeader, Panel } from "@/components/admin/parts";
+import { PushToggle } from "@/components/admin/PushToggle";
 import { emailEnabled, whatsappApiConfigured } from "@/lib/server/notify";
 import { getStore } from "@/lib/server/store";
 import { markReadAction, saveSettingsAction } from "../../actions";
@@ -28,6 +29,14 @@ export default async function NotificationsPage() {
           ) : null
         }
       />
+
+      <Panel
+        title="Avisos no celular"
+        description="Ative em cada aparelho — no seu celular e no da outra pessoa que administra. Quando alguém confirmar ou mudar a resposta, chega uma notificação igual à de aplicativo."
+        className="mb-6"
+      >
+        <PushToggle />
+      </Panel>
 
       <Panel className="!p-0">
         {items.length === 0 ? (

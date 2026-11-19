@@ -119,6 +119,26 @@ test.describe("Painel administrativo", () => {
     await expect(page.getByTestId("guest-row").filter({ hasText: name })).toHaveCount(0);
   });
 
+  test("painel instalável no celular, com avisos push", async ({ page, request }) => {
+    const manifest = await (await request.get("/painel.webmanifest")).json();
+    expect(manifest).toMatchObject({ start_url: "/admin", scope: "/admin", display: "standalone" });
+    const icon = await request.get("/painel-icon/192");
+    expect(icon.headers()["content-type"]).toBe("image/png");
+    expect((await request.get("/painel-icon/7")).status()).toBe(404);
+    expect(await (await request.get("/painel-sw.js")).text()).toContain("showNotification");
+
+    await login(page);
+    await page.goto("/admin/notificacoes");
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/painel.webmanifest");
+    await expect(page.getByRole("heading", { name: "Avisos no celular" })).toBeVisible();
+    // Cada navegador mostra o caminho certo: botão para ativar, ou o passo a passo do iPhone
+    const toggle = page.getByTestId("push-toggle");
+    await expect(toggle).not.toHaveAttribute("data-state", "loading");
+    const state = await toggle.getAttribute("data-state");
+    if (state === "off") await expect(page.getByTestId("push-enable")).toBeVisible();
+    if (state === "ios-install") await expect(toggle).toContainText("Adicionar à Tela de Início");
+  });
+
   test("dashboard soma confirmados e acompanhantes", async ({ page }, testInfo) => {
     await login(page);
     const before = await page.getByTestId("stats").innerText();

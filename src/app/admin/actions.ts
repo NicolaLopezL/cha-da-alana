@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { defaultSettings, settingsSchema, type Settings } from "@/lib/settings";
 import { requireAdmin, signIn, signOut } from "@/lib/server/auth";
+import { isValidSubscription, pushPublicKey, removePushSubscription, savePushSubscription, sendPush } from "@/lib/server/push";
 import { recordRsvp } from "@/lib/server/rsvp";
 import { assertSameOrigin, nameKey, newInviteToken, rateLimit } from "@/lib/server/security";
 import { getStore } from "@/lib/server/store";
@@ -425,3 +426,34 @@ const FIELD_LABELS: Record<string, string> = {
   notifyEmails: "E-mails de notificação",
   notifyWhatsappApi: "Aviso automático por WhatsApp",
 };
+
+// ---------------------------------------------------------------------------
+// Notificações push no celular
+// ---------------------------------------------------------------------------
+export async function pushPublicKeyAction(): Promise<string> {
+  await guard();
+  return pushPublicKey();
+}
+
+export async function savePushSubscriptionAction(subscription: unknown, device: string): Promise<{ ok: boolean }> {
+  const admin = await guard();
+  if (!isValidSubscription(subscription)) return { ok: false };
+  await savePushSubscription(subscription, admin.email, String(device || "Aparelho"));
+  await getStore().addAudit({ actor: admin.name, action: "push.subscribe", entity: "push", entityId: null, details: { device: String(device).slice(0, 80) } });
+  return { ok: true };
+}
+
+export async function removePushSubscriptionAction(endpoint: string): Promise<{ ok: boolean }> {
+  await guard();
+  if (typeof endpoint === "string" && endpoint.startsWith("https://")) await removePushSubscription(endpoint);
+  return { ok: true };
+}
+
+export async function testPushAction(endpoint: string): Promise<{ ok: boolean; message: string }> {
+  const admin = await guard();
+  const result = await sendPush(
+    { title: "Avisos ligados 💕", body: `Pronto, ${admin.name}! Este aparelho vai avisar quando alguém responder o convite.`, tag: "teste" },
+    (s) => s.subscription.endpoint === endpoint,
+  );
+  return { ok: result.startsWith("push: 1/"), message: result };
+}

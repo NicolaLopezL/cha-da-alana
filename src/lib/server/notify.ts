@@ -1,6 +1,7 @@
 import "server-only";
 import type { Settings } from "@/lib/settings";
 import { env } from "./env";
+import { sendPushNotice } from "./push";
 
 /**
  * Avisos externos sobre novas confirmações.
@@ -112,9 +113,13 @@ export async function sendWhatsappNotice(settings: Settings, notice: RsvpNotice)
 }
 
 export async function dispatchExternalNotices(settings: Settings, notice: RsvpNotice): Promise<void> {
-  const out = await Promise.allSettled([sendEmailNotice(settings, notice), sendWhatsappNotice(settings, notice)]);
+  const out = await Promise.allSettled([
+    sendPushNotice(notice),
+    sendEmailNotice(settings, notice),
+    sendWhatsappNotice(settings, notice),
+  ]);
   for (const r of out) {
     if (r.status === "rejected") console.error("[notify]", r.reason);
-    else if (!r.value.endsWith("não configurado") && !r.value.includes("desativado")) console.info("[notify]", r.value);
+    else if (!r.value.endsWith("não configurado") && !r.value.includes("desativado") && !r.value.includes("nenhum aparelho")) console.info("[notify]", r.value);
   }
 }

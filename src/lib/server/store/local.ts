@@ -260,4 +260,38 @@ export class LocalStore implements Store {
   }
 
   async ping() {}
+
+  private privatePath(key: string) {
+    if (!/^[a-z0-9/_.-]+$/i.test(key) || key.includes("..")) throw new Error("invalid_key");
+    return path.join(localDataDir(), "private", key);
+  }
+  async getPrivate(key: string) {
+    try {
+      return await fs.readFile(this.privatePath(key), "utf8");
+    } catch {
+      return null;
+    }
+  }
+  async putPrivate(key: string, value: string, onlyIfAbsent = false) {
+    const file = this.privatePath(key);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    try {
+      await fs.writeFile(file, value, { flag: onlyIfAbsent ? "wx" : "w" });
+      return true;
+    } catch (e) {
+      if (onlyIfAbsent && (e as NodeJS.ErrnoException).code === "EEXIST") return false;
+      throw e;
+    }
+  }
+  async deletePrivate(key: string) {
+    await fs.rm(this.privatePath(key), { force: true });
+  }
+  async listPrivate(prefix: string) {
+    try {
+      const dir = this.privatePath(prefix);
+      return (await fs.readdir(dir)).map((f) => `${prefix.replace(/\/$/, "")}/${f}`);
+    } catch {
+      return [];
+    }
+  }
 }

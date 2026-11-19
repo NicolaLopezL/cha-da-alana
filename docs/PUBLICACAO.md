@@ -86,6 +86,19 @@ Faça na ordem. Nenhuma etapa contrata serviços pagos.
 4. Aguarde a propagação (de minutos até algumas horas). A Vercel emite o certificado HTTPS sozinha.
 5. Troque `SITE_URL` para `https://chadaalana.com.br` e faça um **Redeploy**. Os links pessoais passam a usar o domínio novo, e os antigos (`*.vercel.app`) continuam funcionando.
 
+## 5b. Avisos no celular (push, gratuito)
+
+Nada para configurar na hospedagem: as chaves são geradas sozinhas e ficam num armazenamento
+privado do Supabase (bucket `private`, criado automaticamente). Em cada celular:
+
+- **Android:** abra o painel no Chrome → **Notificações** → **Ativar avisos neste aparelho**.
+  Se quiser, "Adicionar à tela inicial" pelo menu ⋮.
+- **iPhone (iOS 16.4+):** no Safari, **Compartilhar → Adicionar à Tela de Início**, abra pelo ícone
+  "Chá da Alana", entre no painel e ative em **Notificações**.
+
+Cada aparelho recebe um aviso de teste ao ativar. Para trocar as chaves, defina `VAPID_PUBLIC_KEY`
+e `VAPID_PRIVATE_KEY` (os aparelhos precisarão ativar de novo).
+
 ## 6. Avisos por e-mail (opcional, gratuito)
 
 1. Crie uma conta em <https://resend.com>. O plano gratuito tem limite diário e mensal, mais que suficiente para um chá.

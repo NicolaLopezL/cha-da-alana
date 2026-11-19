@@ -86,4 +86,11 @@ export interface Store {
   saveMedia(fileName: string, contentType: string, bytes: Uint8Array): Promise<string>;
 
   ping(): Promise<void>;
+
+  /** Arquivos privados do servidor (inscrições de notificação, chaves). Nunca públicos. */
+  getPrivate(key: string): Promise<string | null>;
+  /** Grava; com onlyIfAbsent, devolve false se já existir. */
+  putPrivate(key: string, value: string, onlyIfAbsent?: boolean): Promise<boolean>;
+  deletePrivate(key: string): Promise<void>;
+  listPrivate(prefix: string): Promise<string[]>;
 }

@@ -280,4 +280,46 @@ export class SupabaseStore implements Store {
   async ping() {
     check(await this.db.rpc("keepalive"));
   }
+
+  // Bucket privado (criado sob demanda) — acessível só com a chave secreta do servidor.
+  private bucketReady?: Promise<void>;
+  private privateBucket() {
+    this.bucketReady ??= (async () => {
+      const got = await this.db.storage.getBucket(PRIVATE_BUCKET);
+      if (got.data) return;
+      const made = await this.db.storage.createBucket(PRIVATE_BUCKET, { public: false });
+      if (made.error && !/exist/i.test(made.error.message)) {
+        this.bucketReady = undefined;
+        throw new Error(made.error.message);
+      }
+    })();
+    return this.bucketReady.then(() => this.db.storage.from(PRIVATE_BUCKET));
+  }
+  async getPrivate(key: string) {
+    const res = await (await this.privateBucket()).download(key);
+    if (res.error || !res.data) return null;
+    return await res.data.text();
+  }
+  async putPrivate(key: string, value: string, onlyIfAbsent = false) {
+    const res = await (await this.privateBucket()).upload(key, new Blob([value], { type: "application/json" }), {
+      contentType: "application/json",
+      upsert: !onlyIfAbsent,
+    });
+    if (res.error) {
+      if (onlyIfAbsent && /exist|duplicate/i.test(res.error.message)) return false;
+      throw new Error(res.error.message);
+    }
+    return true;
+  }
+  async deletePrivate(key: string) {
+    await (await this.privateBucket()).remove([key]);
+  }
+  async listPrivate(prefix: string) {
+    const folder = prefix.replace(/\/$/, "");
+    const res = await (await this.privateBucket()).list(folder, { limit: 100 });
+    if (res.error) throw new Error(res.error.message);
+    return (res.data ?? []).filter((f) => f.id).map((f) => `${folder}/${f.name}`);
+  }
 }
+
+const PRIVATE_BUCKET = "private";
