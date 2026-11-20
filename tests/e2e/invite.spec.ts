@@ -301,6 +301,15 @@ test.describe("Convite personalizado e confirmação", () => {
     await g.goto(path);
     await openEnvelope(g);
 
+    // Topo: além do "Confirme aqui", um botão menor leva direto aos presentes
+    const giftsCta = g.getByTestId("hero-gifts");
+    await expect(giftsCta).toHaveText(/Ver os presentes/);
+    await expect(giftsCta).toBeInViewport();
+    await g.waitForTimeout(4500);
+    await giftsCta.click({ force: true });
+    await expect(g.locator("#enxoval")).toBeInViewport();
+    await g.evaluate(() => window.scrollTo(0, 0));
+
     await expect(g.getByTestId("event-day")).toHaveText("20");
     await expect(g.locator("#data")).toContainText("março");
     await expect(g.locator("#data")).toContainText("2099");

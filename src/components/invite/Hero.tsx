@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRef, type MouseEvent } from "react";
-import { IconArrowDown, IconHeart } from "./Icons";
+import { IconArrowDown, IconGift, IconHeart } from "./Icons";
 import { HeartBalloon, OrnamentFrame, Particles } from "./Ornaments";
 import { gsap, prefersReducedMotion, SplitText, useGSAP } from "./gsap";
 
@@ -13,14 +13,16 @@ interface Props {
   bearImageUrl: string;
   showBear: boolean;
   showDecorations: boolean;
+  /** Seção dos presentes para o botão secundário (lista de enxoval ou sugestões); null esconde o botão. */
+  giftTarget: "enxoval" | "presentes" | null;
 }
 
 /** Cena 3 — revelação da Alana: nome escrito à mão, frase e balão de coração. */
-export function Hero({ opened, guestName, phrase, bearImageUrl, showBear, showDecorations }: Props) {
+export function Hero({ opened, guestName, phrase, bearImageUrl, showBear, showDecorations, giftTarget }: Props) {
   const scope = useRef<HTMLElement>(null);
 
-  const goToRsvp = (e: MouseEvent<HTMLAnchorElement>) => {
-    const el = document.getElementById("confirmar");
+  const goTo = (id: string) => (e: MouseEvent<HTMLAnchorElement>) => {
+    const el = document.getElementById(id);
     if (!el) return;
     e.preventDefault();
     const top = el.getBoundingClientRect().top + window.scrollY - 8;
@@ -108,12 +110,19 @@ export function Hero({ opened, guestName, phrase, bearImageUrl, showBear, showDe
           {phrase}
         </p>
 
-        <div data-hero-cue className="mt-7 flex flex-col items-center gap-2 sm:mt-9">
-          <a href="#confirmar" onClick={goToRsvp} className="cta-glow" data-testid="hero-confirm">
+        <div data-hero-cue className="mt-7 flex flex-col items-center gap-3 sm:mt-9">
+          <a href="#confirmar" onClick={goTo("confirmar")} className="cta-glow" data-testid="hero-confirm">
             <span className="cta-glow-shine" aria-hidden="true" />
             <IconHeart size={20} />
             Confirme aqui
           </a>
+          {giftTarget && (
+            <a href={`#${giftTarget}`} onClick={goTo(giftTarget)} className="cta-soft" data-testid="hero-gifts">
+              <span className="cta-glow-shine" aria-hidden="true" />
+              <IconGift size={18} />
+              Ver os presentes
+            </a>
+          )}
           <a
             href="#convite"
             className="flex min-h-11 items-center gap-1.5 rounded-full px-4 text-xs font-medium tracking-[0.18em] text-cocoa-500 uppercase"

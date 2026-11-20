@@ -20,7 +20,9 @@ export function QuickNav({ items, visible }: { items: QuickNavItem[]; visible: b
   const [shown, setShown] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Aparece com suavidade depois da revelação da Alana; no celular, mostra a lista aberta por um instante.
+  // Aparece com suavidade depois da revelação da Alana; no celular, a abinha brilha na primeira visita
+  // (sem abrir sozinha, para não cobrir os botões do topo).
+  const [hint, setHint] = useState(false);
   useEffect(() => {
     if (!visible) return;
     const reduce = prefersReducedMotion();
@@ -32,9 +34,9 @@ export function QuickNav({ items, visible }: { items: QuickNavItem[]; visible: b
       seen = sessionStorage.getItem("alana-nav-hint") === "1";
       sessionStorage.setItem("alana-nav-hint", "1");
     } catch {}
-    if (!seen && window.innerWidth < 1024) {
-      t2 = setTimeout(() => setOpen(true), reduce ? 0 : 3000);
-      t3 = setTimeout(() => setOpen(false), reduce ? 2500 : 5800);
+    if (!seen && !reduce && window.innerWidth < 1024) {
+      t2 = setTimeout(() => setHint(true), 3200);
+      t3 = setTimeout(() => setHint(false), 9000);
     }
     return () => [t1, t2, t3].forEach((t) => t && clearTimeout(t));
   }, [visible]);
@@ -110,11 +112,14 @@ export function QuickNav({ items, visible }: { items: QuickNavItem[]; visible: b
       <div ref={panelRef} className={`fixed left-0 top-1/2 z-40 -translate-y-1/2 lg:hidden ${fade}`}>
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => {
+            setHint(false);
+            setOpen((o) => !o);
+          }}
           aria-expanded={open}
           aria-controls="quicknav-mobile"
           aria-label={open ? "Fechar atalhos" : "Abrir atalhos: presente, endereço e confirmação"}
-          className="paper flex h-14 w-9 items-center justify-center rounded-r-2xl text-rose-600 shadow-[var(--shadow-soft)] ring-1 ring-champagne-400/25 active:scale-95"
+          className={`paper flex h-14 w-9 items-center justify-center rounded-r-2xl text-rose-600 shadow-[var(--shadow-soft)] ring-1 ring-champagne-400/25 active:scale-95 ${hint ? "animate-tab-hint" : ""}`}
           data-testid="quicknav-toggle"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">

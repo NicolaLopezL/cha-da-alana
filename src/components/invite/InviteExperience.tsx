@@ -168,6 +168,7 @@ export function InviteExperience({ settings: s, guest: initialGuest, gifts, turn
           bearImageUrl={s.bearImageUrl}
           showBear={s.showBear}
           showDecorations={decorations}
+          giftTarget={s.showRegistry && s.registryUrl ? "enxoval" : s.showGifts && gifts.length > 0 ? "presentes" : null}
         />
         <div className="paper-ivory">
           <InviteText lines={s.inviteLines.filter(Boolean)} />
