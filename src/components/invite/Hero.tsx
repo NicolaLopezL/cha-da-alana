@@ -5,6 +5,7 @@ import { useRef, type MouseEvent } from "react";
 import { IconArrowDown, IconGift, IconHeart } from "./Icons";
 import { HeartBalloon, OrnamentFrame, Particles } from "./Ornaments";
 import { gsap, prefersReducedMotion, SplitText, useGSAP } from "./gsap";
+import { scrollToSection } from "./scroll";
 
 interface Props {
   opened: boolean;
@@ -22,13 +23,7 @@ export function Hero({ opened, guestName, phrase, bearImageUrl, showBear, showDe
   const scope = useRef<HTMLElement>(null);
 
   const goTo = (id: string) => (e: MouseEvent<HTMLAnchorElement>) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    e.preventDefault();
-    const top = el.getBoundingClientRect().top + window.scrollY - 8;
-    window.scrollTo({ top, behavior: prefersReducedMotion() ? "auto" : "smooth" });
-    el.setAttribute("tabindex", "-1");
-    el.focus({ preventScroll: true });
+    if (scrollToSection(id)) e.preventDefault();
   };
 
   useGSAP(

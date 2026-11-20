@@ -237,9 +237,23 @@ test.describe("Convite personalizado e confirmação", () => {
       await expect(p.getByTestId("rsvp-thanks")).toContainText(people === 1 ? "1 pessoa" : `${people} pessoas`);
       // Ganha um link pessoal para editar depois
       await expect(p).toHaveURL(/\/convite\/[A-Za-z0-9_-]{20,}/);
-      // Voltando ao convite geral no mesmo aparelho, aparece o atalho para a própria resposta
+      // Voltando ao convite geral no mesmo aparelho: agradecimento com atalhos, em vez do formulário
       await p.goto("/");
-      await expect(p.getByTestId("saved-answer")).toBeVisible();
+      await p.waitForLoadState("networkidle");
+      if (await p.getByTestId("envelope-scene").isVisible()) await openEnvelope(p);
+      const welcome = p.getByTestId("rsvp-summary");
+      await expect(welcome).toContainText(people === 1 ? "Obrigado por ter confirmado" : "Obrigado por ter confirmado");
+      await expect(welcome).toContainText(people === 1 ? "1 pessoa" : `${people} pessoas`);
+      await expect(p.getByTestId("rsvp-form")).toHaveCount(0);
+      await expect(welcome.getByRole("link", { name: "Ver a data e o horário" })).toBeVisible();
+      await expect(p.getByTestId("saved-answer")).toHaveAttribute("href", /\/convite\//);
+      if (people === 7) {
+        await welcome.getByRole("link", { name: "Ver a data e o horário" }).click();
+        await expect(p.locator("#data")).toBeInViewport();
+        // Outra pessoa no mesmo aparelho ainda consegue responder
+        await welcome.getByRole("button", { name: "Responder por outra pessoa" }).click();
+        await expect(p.getByTestId("rsvp-form")).toBeVisible();
+      }
       await v.close();
     }
 

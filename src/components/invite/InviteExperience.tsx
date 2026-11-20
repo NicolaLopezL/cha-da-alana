@@ -144,6 +144,15 @@ export function InviteExperience({ settings: s, guest: initialGuest, gifts, turn
     ...(s.showGifts && gifts.length > 0 ? [{ id: "presentes", label: "Sugestões de mimos", icon: <IconSparkle size={20} /> }] : []),
   ];
 
+  // Atalhos do agradecimento (para quem já respondeu): endereço, data e presente
+  const giftShortcut =
+    s.showRegistry && s.registryUrl ? "enxoval" : s.showGifts && gifts.length > 0 ? "presentes" : null;
+  const thanksShortcuts: QuickNavItem[] = [
+    ...(s.showLocation ? [{ id: "local", label: "Ver o endereço", icon: <IconPin size={19} /> }] : []),
+    { id: "data", label: "Ver a data e o horário", icon: <IconCalendar size={19} /> },
+    ...(giftShortcut ? [{ id: giftShortcut, label: "Ver os presentes", icon: <IconGift size={19} /> }] : []),
+  ];
+
   return (
     <>
       <a href="#confirmar" className="sr-only-focusable fixed left-4 top-4 z-[60] rounded-full bg-paper px-4 py-2 text-sm shadow">
@@ -168,7 +177,7 @@ export function InviteExperience({ settings: s, guest: initialGuest, gifts, turn
           bearImageUrl={s.bearImageUrl}
           showBear={s.showBear}
           showDecorations={decorations}
-          giftTarget={s.showRegistry && s.registryUrl ? "enxoval" : s.showGifts && gifts.length > 0 ? "presentes" : null}
+          giftTarget={giftShortcut}
         />
         <div className="paper-ivory">
           <InviteText lines={s.inviteLines.filter(Boolean)} />
@@ -176,7 +185,7 @@ export function InviteExperience({ settings: s, guest: initialGuest, gifts, turn
           {/* Enxoval antes do local, para ninguém deixar de ver */}
           {s.showRegistry && <RegistrySection s={s} />}
           {s.showLocation && <LocationSection s={s} />}
-          <RsvpSection s={s} guest={guest} turnstileSiteKey={turnstileSiteKey} onGuestResolved={setGuest} />
+          <RsvpSection s={s} guest={guest} turnstileSiteKey={turnstileSiteKey} onGuestResolved={setGuest} shortcuts={thanksShortcuts} />
           {s.showWhatsapp && <WhatsappSection s={s} guestName={guest?.name ?? ""} />}
           {s.showGifts && <GiftsSection s={s} gifts={gifts} />}
         </div>

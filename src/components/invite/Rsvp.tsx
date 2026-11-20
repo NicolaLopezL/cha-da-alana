@@ -6,6 +6,8 @@ import { deadlinePassed, firstName, formatDateLong } from "@/lib/format";
 import type { PublicSettings } from "@/lib/settings";
 import type { PublicGuest, RsvpAttending } from "@/lib/types";
 import { IconCheck, IconHeart, IconMinus, IconPlus } from "./Icons";
+import type { QuickNavItem } from "./QuickNav";
+import { scrollToSection } from "./scroll";
 import { Turnstile } from "./Turnstile";
 import { gsap, prefersReducedMotion } from "./gsap";
 
@@ -15,12 +17,82 @@ interface Props {
   turnstileSiteKey: string;
   /** Convite aberto respondido: passa a se comportar como convite pessoal. */
   onGuestResolved: (guest: PublicGuest) => void;
+  /** Atalhos mostrados no agradecimento (endereço, data, presente). */
+  shortcuts: QuickNavItem[];
+}
+
+type Answer = { attending: RsvpAttending; people: number };
+const ANSWER_KEY = "alana-invite-answer";
+
+/** Botões para as outras partes do convite, mostrados depois de responder. */
+function Shortcuts({ items }: { items: QuickNavItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-7" data-testid="thanks-shortcuts">
+      <p className="text-sm font-medium text-cocoa-500">Agora, aqui está tudo o que você precisa:</p>
+      <ul className="mx-auto mt-4 flex max-w-xs flex-col gap-3">
+        {items.map((i) => (
+          <li key={i.id}>
+            <a
+              href={`#${i.id}`}
+              onClick={(e) => {
+                if (scrollToSection(i.id)) e.preventDefault();
+              }}
+              className="cta-soft w-full"
+            >
+              <span className="cta-glow-shine" aria-hidden="true" />
+              {i.icon}
+              {i.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** Quem volta ao convite depois de responder vê o agradecimento e os atalhos, em vez do formulário. */
+function Welcome({
+  answer,
+  thanksYes,
+  thanksNo,
+  shortcuts,
+  children,
+}: {
+  answer: Answer | null;
+  thanksYes: string;
+  thanksNo: string;
+  shortcuts: QuickNavItem[];
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative py-2 text-center" data-testid="rsvp-summary">
+      <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blush-100 text-rose-600">
+        <IconHeart size={26} />
+      </span>
+      <p className="display text-[1.7rem] leading-snug text-cocoa-700 sm:text-3xl">
+        {answer?.attending === "no" ? "Obrigado por nos avisar!" : answer ? "Obrigado por ter confirmado!" : "Obrigado por responder!"}
+      </p>
+      {answer && (
+        <p className="mt-2 text-sm text-cocoa-500">
+          {answer.attending === "yes"
+            ? `Confirmado para ${answer.people} ${answer.people === 1 ? "pessoa" : "pessoas"}`
+            : "Você nos avisou que não poderá ir"}
+        </p>
+      )}
+      {answer && (
+        <p className="mx-auto mt-3 max-w-[34ch] text-[0.95rem] text-cocoa-700/85">{answer.attending === "yes" ? thanksYes : thanksNo}</p>
+      )}
+      <Shortcuts items={shortcuts} />
+      <div className="mt-7 flex flex-col items-center gap-1">{children}</div>
+    </div>
+  );
 }
 
 type View = "form" | "summary" | "thanks";
 
 /** Cena 7 — confirmação de presença (gravada no banco pelo servidor). */
-export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Props) {
+export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved, shortcuts }: Props) {
   const mode: "personal" | "generic" | "closed" = guest ? "personal" : s.genericInviteEnabled ? "generic" : "closed";
   const closed = deadlinePassed(s.rsvpDeadline);
   const maxPeople = guest?.maxPeople ?? s.genericMaxPeople;
@@ -51,6 +123,8 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
   const uid = useId();
   const onToken = useCallback((t: string) => setTurnstileToken(t), []);
   const [savedToken, setSavedToken] = useState("");
+  const [savedAnswer, setSavedAnswer] = useState<Answer | null>(null);
+  const [answerForOther, setAnswerForOther] = useState(false);
 
   // Quem já respondeu pelo convite aberto neste aparelho pode rever/alterar a resposta.
   useEffect(() => {
@@ -60,7 +134,15 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
       t = localStorage.getItem("alana-invite-token") ?? "";
     } catch {}
     if (!/^[A-Za-z0-9_-]{20,64}$/.test(t)) return;
-    const id = requestAnimationFrame(() => setSavedToken(t));
+    let a: Answer | null = null;
+    try {
+      const raw = JSON.parse(localStorage.getItem(ANSWER_KEY) ?? "null");
+      if (raw && (raw.attending === "yes" || raw.attending === "no") && Number.isInteger(raw.people)) a = raw;
+    } catch {}
+    const id = requestAnimationFrame(() => {
+      setSavedToken(t);
+      setSavedAnswer(a);
+    });
     return () => cancelAnimationFrame(id);
   }, [mode]);
 
@@ -145,6 +227,7 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
           // Guarda o link pessoal para que a pessoa possa alterar a resposta depois.
           try {
             localStorage.setItem("alana-invite-token", res.token);
+            localStorage.setItem(ANSWER_KEY, JSON.stringify({ attending: res.attending, people: res.people }));
             sessionStorage.setItem(`alana-opened-${res.token}`, "1");
           } catch {}
           window.history.replaceState(null, "", `/convite/${res.token}`);
@@ -216,26 +299,40 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
                 {lastResult.people === 1 ? "1 pessoa confirmada" : `${lastResult.people} pessoas confirmadas`}
               </p>
             )}
-            <button type="button" className="btn btn-ghost mt-8" onClick={() => setView("form")} data-thanks-text>
+            <div data-thanks-text>
+              <Shortcuts items={shortcuts} />
+            </div>
+            <button type="button" className="btn btn-ghost mt-6" onClick={() => setView("form")} data-thanks-text>
               Alterar resposta
             </button>
           </div>
         ) : view === "summary" && lastResult ? (
-          <div className="relative py-4 text-center" data-testid="rsvp-summary">
-            <p className="eyebrow mb-3">Sua resposta</p>
-            <p className="display text-[1.7rem] text-cocoa-700">
-              {lastResult.attending === "yes"
-                ? `Presença confirmada · ${lastResult.people} ${lastResult.people === 1 ? "pessoa" : "pessoas"}`
-                : "Você nos avisou que não poderá ir"}
-            </p>
+          <Welcome answer={lastResult} thanksYes={s.thanksYes} thanksNo={s.thanksNo} shortcuts={shortcuts}>
             {closed ? (
-              <p className="mt-4 text-sm text-cocoa-500">O prazo para alterações foi encerrado.</p>
+              <p className="text-sm text-cocoa-500">O prazo para alterações foi encerrado.</p>
             ) : (
-              <button type="button" className="btn btn-ghost mt-6" onClick={() => setView("form")}>
-                Alterar resposta
+              <button type="button" className="btn btn-ghost" onClick={() => setView("form")}>
+                Alterar minha resposta
               </button>
             )}
-          </div>
+          </Welcome>
+        ) : mode === "generic" && savedToken && !answerForOther ? (
+          <Welcome answer={savedAnswer} thanksYes={s.thanksYes} thanksNo={s.thanksNo} shortcuts={shortcuts}>
+            {!closed && (
+              <a href={`/convite/${savedToken}`} className="btn btn-ghost" data-testid="saved-answer">
+                Alterar minha resposta
+              </a>
+            )}
+            {!closed && (
+              <button
+                type="button"
+                className="min-h-11 px-3 text-sm font-medium text-cocoa-500 underline underline-offset-2"
+                onClick={() => setAnswerForOther(true)}
+              >
+                Responder por outra pessoa
+              </button>
+            )}
+          </Welcome>
         ) : closed ? (
           <p className="relative py-6 text-center text-cocoa-500">
             O prazo de confirmação terminou em {formatDateLong(s.rsvpDeadline)}. Se precisar, fale com os papais pelo WhatsApp.
@@ -251,15 +348,6 @@ export function RsvpSection({ s, guest, turnstileSiteKey, onGuestResolved }: Pro
               </div>
             ) : (
               <div className="space-y-4">
-                {savedToken && (
-                  <a
-                    href={`/convite/${savedToken}`}
-                    className="block rounded-2xl bg-blush-50 px-4 py-3 text-center text-sm text-cocoa-700"
-                    data-testid="saved-answer"
-                  >
-                    Você já respondeu neste aparelho. <span className="font-semibold text-rose-600 underline underline-offset-2">Ver ou alterar minha resposta</span>
-                  </a>
-                )}
                 <p className="text-center text-sm text-cocoa-500">Conte quem é você e quantas pessoas vão com você.</p>
                 <div>
                   <label htmlFor={`${uid}-name`} className="field-label">
