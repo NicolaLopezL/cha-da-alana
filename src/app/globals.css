@@ -437,6 +437,53 @@ body {
   transform-origin: 50% 100%;
 }
 
+/* Quiz dos Papais */
+@keyframes quiz-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+.quiz-in {
+  animation: quiz-in 0.45s var(--ease-soft);
+}
+@keyframes heart-rain {
+  0% {
+    transform: translateY(-10vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(112vh) rotate(260deg);
+    opacity: 0.7;
+  }
+}
+.heart-rain {
+  position: absolute;
+  top: 0;
+  opacity: 0;
+  animation: heart-rain 6s linear 2;
+}
+@keyframes podium-in {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.85);
+  }
+}
+.podium-in {
+  animation: podium-in 0.9s var(--ease-soft) both;
+}
+@keyframes live-dot {
+  50% {
+    opacity: 0.35;
+  }
+}
+.live-dot {
+  animation: live-dot 1.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -444,6 +491,12 @@ body {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+  .heart-rain {
+    display: none;
+  }
+  .podium-in {
+    animation-delay: 0s !important;
   }
 }
 

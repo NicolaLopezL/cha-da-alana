@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/admin/evento", label: "Evento" },
   { href: "/admin/personalizar", label: "Textos e visual" },
   { href: "/admin/presentes", label: "Presentes" },
+  { href: "/admin/quiz", label: "🎀 Quiz dos Papais" },
   { href: "/admin/historico", label: "Histórico" },
 ];
 

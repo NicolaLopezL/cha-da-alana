@@ -63,4 +63,4 @@ docs/PUBLICACAO.md        passo a passo de publicação, domínio e integraçõe
 - Coletamos apenas nome, quantidade de pessoas, recado opcional e telefone opcional no convite aberto.
 - Cabeçalhos de segurança (HSTS, `X-Frame-Options`, `nosniff`, `Permissions-Policy`).
 
-Publicação: veja [docs/PUBLICACAO.md](docs/PUBLICACAO.md).
+Publicação: veja [docs/PUBLICACAO.md](docs/PUBLICACAO.md). Quiz dos Papais (uso e publicação): [docs/QUIZ.md](docs/QUIZ.md).

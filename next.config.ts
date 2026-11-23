@@ -10,6 +10,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Postgres embutido: só no modo local (dev/testes); nunca vai para a Vercel.
+  serverExternalPackages: ["@electric-sql/pglite"],
+  // Fontes do cartaz em PDF
+  outputFileTracingIncludes: {
+    "/quiz/qr/cartaz": ["./node_modules/@fontsource/{pinyon-script,cormorant-garamond,manrope}/files/*-latin-{400,500,600}-normal.woff"],
+  },
+  outputFileTracingExcludes: { "/*": ["node_modules/@electric-sql/**"] },
   // Os testes E2E usam uma pasta própria para não atrapalhar o "npm run dev".
   distDir: process.env.NEXT_DIST_DIR || ".next",
   turbopack: {

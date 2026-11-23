@@ -40,6 +40,7 @@ export default defineConfig({
       NEXT_DIST_DIR: ".next-test",
       LOCAL_DATA_DIR: ".data-test",
       DISABLE_RATE_LIMIT: "1",
+      LOCAL_QUIZ_MEMORY: "1",
       SESSION_SECRET: "segredo-de-teste-com-mais-de-32-caracteres!!",
       LOCAL_ADMINS: `${TEST_ADMIN.email}|${TEST_ADMIN.password}|${TEST_ADMIN.name};${TEST_ADMIN_2.email}|${TEST_ADMIN_2.password}|${TEST_ADMIN_2.name}`,
       SITE_URL: `http://localhost:${PORT}`,

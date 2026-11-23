@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { QuizStatus } from "@/lib/quiz/types";
 import type { PublicSettings } from "@/lib/settings";
 import type { GiftSuggestion, PublicGuest } from "@/lib/types";
 import { Envelope } from "./Envelope";
+import { GamesSection } from "./GamesSection";
 import { Hero } from "./Hero";
-import { IconCalendar, IconGift, IconHeart, IconMusic, IconMute, IconPin, IconSparkle } from "./Icons";
+import { IconCalendar, IconGame, IconGift, IconHeart, IconMusic, IconMute, IconPin, IconSparkle } from "./Icons";
 import { QuickNav, type QuickNavItem } from "./QuickNav";
 import { RsvpSection } from "./Rsvp";
 import {
@@ -24,11 +26,13 @@ export interface InviteData {
   guest: PublicGuest | null;
   gifts: GiftSuggestion[];
   turnstileSiteKey: string;
+  /** null = quiz indisponível (a seção Brincadeiras não aparece). */
+  quizStatus: QuizStatus | null;
 }
 
 const openedKey = (token: string | undefined) => `alana-opened-${token ?? "geral"}`;
 
-export function InviteExperience({ settings: s, guest: initialGuest, gifts, turnstileSiteKey }: InviteData) {
+export function InviteExperience({ settings: s, guest: initialGuest, gifts, turnstileSiteKey, quizStatus }: InviteData) {
   const [guest, setGuest] = useState(initialGuest);
   const [opened, setOpened] = useState(false);
   const [envelopeVisible, setEnvelopeVisible] = useState(true);
@@ -142,6 +146,7 @@ export function InviteExperience({ settings: s, guest: initialGuest, gifts, turn
     ...(s.showLocation ? [{ id: "local", label: "Endereço", icon: <IconPin size={20} /> }] : []),
     { id: "confirmar", label: "Confirmar presença", icon: <IconHeart size={20} /> },
     ...(s.showGifts && gifts.length > 0 ? [{ id: "presentes", label: "Sugestões de mimos", icon: <IconSparkle size={20} /> }] : []),
+    ...(quizStatus ? [{ id: "brincadeiras", label: "Brincadeiras", icon: <IconGame size={20} /> }] : []),
   ];
 
   // Atalhos do agradecimento (para quem já respondeu): endereço, data e presente
@@ -188,6 +193,7 @@ export function InviteExperience({ settings: s, guest: initialGuest, gifts, turn
           <RsvpSection s={s} guest={guest} turnstileSiteKey={turnstileSiteKey} onGuestResolved={setGuest} shortcuts={thanksShortcuts} />
           {s.showWhatsapp && <WhatsappSection s={s} guestName={guest?.name ?? ""} />}
           {s.showGifts && <GiftsSection s={s} gifts={gifts} />}
+          {quizStatus && <GamesSection status={quizStatus} />}
         </div>
         <Closing s={s} onReplay={replay} />
       </main>
