@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { connection } from "next/server";
+import { applyMystery } from "@/lib/quiz/mystery";
 import { cleanName, quizNameKey } from "@/lib/quiz/name";
 import type {
   AdminAnswer,
@@ -16,7 +17,7 @@ import type {
   QuizLang,
   QuizSession,
 } from "@/lib/quiz/types";
-import { quizRpc } from "./db";
+import { QuizDbError, quizRpc } from "./db";
 
 /** Chama a função SQL sempre em tempo de requisição (nunca durante o build). */
 async function call<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
@@ -87,13 +88,25 @@ export async function saveAnswer(token: string, questionId: string, optionId: st
   });
 }
 
+/** Modo misterioso ligado? Sem a atualização do banco, vale desligado; qualquer outra falha não revela o ranking. */
+async function mysteryOn(): Promise<boolean> {
+  try {
+    return (await call<boolean>("quiz_mystery")) === true;
+  } catch (e) {
+    if (e instanceof QuizDbError && e.code === "not_installed") return false;
+    throw e;
+  }
+}
+
 /* Ranking ao vivo: um mini-cache por instância evita uma consulta por tela conectada. */
 const LIVE_TTL_MS = 700;
 let liveCache: { at: number; value: Promise<LiveState> } | null = null;
 export function liveState(): Promise<LiveState> {
   const now = Date.now();
   if (liveCache && now - liveCache.at < LIVE_TTL_MS) return liveCache.value;
-  const value = call<LiveState>("quiz_live");
+  const value = Promise.all([call<LiveState>("quiz_live"), mysteryOn()]).then(([state, on]) =>
+    on ? applyMystery(state, now) : state,
+  );
   const entry = { at: now, value };
   liveCache = entry;
   value.catch(() => {
@@ -103,7 +116,10 @@ export function liveState(): Promise<LiveState> {
 }
 
 /* ---------- Painel ---------- */
-export const adminState = () => call<AdminQuizState>("quiz_admin_state");
+export async function adminState(): Promise<AdminQuizState> {
+  const [state, mystery] = await Promise.all([call<AdminQuizState>("quiz_admin_state"), mysteryOn()]);
+  return { ...state, live: { ...state.live, mystery } };
+}
 export const adminQuestions = (round: "main" | "extra") =>
   call<AdminQuestion[]>("quiz_admin_questions", { p_round: round });
 export const adminParticipants = () => call<AdminParticipant[]>("quiz_admin_participants");

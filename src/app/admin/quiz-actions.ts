@@ -44,7 +44,7 @@ async function run(fn: string, args: Record<string, unknown>, success: string | 
     res = (await quizRpc()(fn, args)) as Record<string, unknown>;
   } catch (e) {
     if (e instanceof QuizDbError && e.code === "locked") return fail(ERRORS.locked);
-    if (e instanceof QuizDbError && e.code === "not_installed") return fail("As tabelas do quiz ainda não foram criadas no banco.");
+    if (e instanceof QuizDbError && e.code === "not_installed") return fail("Falta executar a atualização do quiz no banco (Supabase → SQL Editor).");
     console.error(`[quiz/${fn}]`, e);
     return fail("Não foi possível concluir. Tente de novo.");
   }
@@ -92,6 +92,13 @@ export async function saveQuizConfigAction(patch: z.input<typeof configSchema>):
   const parsed = configSchema.safeParse(patch);
   if (!parsed.success) return fail("Valor inválido.");
   return run("quiz_save_config", { p: parsed.data }, "Configuração salva.", { action: "quiz.config", details: { config: parsed.data } });
+}
+
+export async function setMysteryAction(on: boolean): Promise<QuizActionResult> {
+  return run("quiz_set_mystery", { p_on: on === true }, on === true ? "Modo misterioso ligado." : "Modo misterioso desligado: revelando!", {
+    action: "quiz.config",
+    details: { config: { liveMystery: on === true } },
+  });
 }
 
 export async function saveQuizTextsAction(texts: Record<string, string>): Promise<QuizActionResult> {

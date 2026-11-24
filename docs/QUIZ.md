@@ -65,6 +65,8 @@ Faça nesta ordem. Enquanto a migração não for executada, o convite continua 
 5. **Ranking ao vivo** → ligue **Transmissão ativada** e use **Exibir na televisão**. Na TV, clique em **Tela cheia**.
    - *Ocultar classificação temporariamente* mostra uma tela de suspense.
    - Com o ranking visível durante o quiz, alguém pode deduzir respostas vendo quando a própria pontuação sobe. Se isso incomodar, deixe oculto até o fim.
+   - **Modo misterioso** (na mesma tela): os primeiros colocados ficam trocando de lugar, sempre próximos, e os pontos viram "???".
+     A ordem mostrada é só suspense; a verdadeira fica em **Visão geral**. Ao desligar (ou ao publicar), as telas fazem 3, 2, 1 e revelam.
 6. **Encerrar Quiz**. A televisão avisa que a brincadeira terminou e mostra só quem concluiu.
 7. Se a regra for *perguntas extras* e houver empate: em **Desempate**, marque as perguntas, clique em **Iniciar rodada** e depois em **Encerrar rodada**.
 8. **Publicar Resultados**. A televisão revela 3º, 2º e 1º com chuva de corações, e `/quiz/ranking` é liberado. **Ocultar Resultados** desfaz.

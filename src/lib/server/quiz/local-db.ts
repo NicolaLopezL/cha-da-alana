@@ -49,7 +49,9 @@ export async function openLocalQuizDb(): Promise<QuizRpc> {
     db = await PGlite.create({ dataDir: dir, relaxedDurability: true });
   }
   await db.exec(LOCAL_ROLES_SQL);
-  const file = path.resolve(/*turbopackIgnore: true*/ process.cwd(), "supabase/migrations/20261123000000_quiz.sql");
-  await db.exec(await fs.readFile(file, "utf8"));
+  for (const name of ["20261123000000_quiz.sql", "20261124000000_quiz_misterioso.sql"]) {
+    const file = path.resolve(/*turbopackIgnore: true*/ process.cwd(), "supabase/migrations", name);
+    await db.exec(await fs.readFile(file, "utf8"));
+  }
   return rpcOver(db);
 }

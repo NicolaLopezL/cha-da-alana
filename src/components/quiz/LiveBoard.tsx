@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { quizDict, type QuizDict } from "@/lib/quiz/i18n";
 import type { LiveRow, LiveState, QuizLang, QuizTextOverrides } from "@/lib/quiz/types";
 import { prefersReducedMotion } from "@/components/invite/gsap";
@@ -12,6 +12,7 @@ import { LangSwitch, useQuizLang } from "./LangSwitch";
 
 const PAGE_SIZE = 7; // linhas por página no modo televisão
 const PAGE_MS = 8000;
+const REVEAL_MS = 9000; // pódio 3º, 2º, 1º e chuva de corações
 
 /** Busca o ranking em intervalos curtos; pausa com a aba escondida e espaça as tentativas sem conexão. */
 function useLive(initial: LiveState | null, everyMs: number) {
@@ -137,6 +138,23 @@ export function LiveBoard({
   const rows = state?.rows ?? [];
   const final = mode === "final";
   const ranked = (mode === "ranking" || final) && rows.length > 0;
+  const mystery = state?.mystery === true;
+
+  // Saiu do modo misterioso com o ranking no ar: contagem regressiva e revelação da classificação verdadeira.
+  const [wasMystery, setWasMystery] = useState(mystery);
+  const [reveal, setReveal] = useState<"count" | "show" | null>(null);
+  if (mystery !== wasMystery) {
+    setWasMystery(mystery);
+    setReveal(!mystery && ranked ? "count" : null);
+  }
+  useEffect(() => {
+    if (reveal !== "show") return;
+    const id = setTimeout(() => setReveal(null), REVEAL_MS);
+    return () => clearTimeout(id);
+  }, [reveal]);
+  const showPodium = useCallback(() => setReveal("show"), []);
+  const counting = reveal === "count" && ranked;
+  const podium = final || reveal === "show";
 
   const [page, setPage] = useState(0);
   const rest = rows.slice(3);
@@ -151,7 +169,7 @@ export function LiveBoard({
   const box = useFlip(rows);
 
   const status =
-    state?.status === "published" ? d.winners : state?.status === "closed" ? `${d.closedLive} ${d.waitingOfficial}` : d.provisional;
+    mystery ? d.mysteryStatus : state?.status === "published" ? d.winners : state?.status === "closed" ? `${d.closedLive} ${d.waitingOfficial}` : d.provisional;
 
   return (
     <main
@@ -159,11 +177,12 @@ export function LiveBoard({
       data-testid="live-board"
       data-mode={mode}
       data-tv={tv ? "1" : undefined}
+      data-mystery={mystery ? "1" : undefined}
       className={`paper-ivory relative flex flex-col overflow-x-clip ${tv ? "h-dvh overflow-hidden" : "min-h-dvh"}`}
     >
       <OrnamentFrame className="!fixed max-sm:hidden" />
       <Particles />
-      {final && <HeartRain count={tv ? 60 : 36} />}
+      {podium && !counting && <HeartRain count={tv ? 60 : 36} />}
 
       <header className={`relative z-10 text-center ${tv ? "px-[4vw] pt-[5vh]" : "px-5 pt-[calc(var(--safe-top)+2.25rem)]"}`}>
         {!tv && (
@@ -175,7 +194,7 @@ export function LiveBoard({
         <h1 className={`display mt-1 text-cocoa-900 ${tv ? "text-[6vh]" : "text-[clamp(2.3rem,9vw,3.6rem)]"}`}>
           {final ? d.finalTitle : d.liveTitle}
         </h1>
-        <p className={`display italic text-rose-600 ${tv ? "text-[3.1vh]" : "mt-1 text-xl"}`}>{d.title}</p>
+        {!(tv && mystery) && <p className={`display italic text-rose-600 ${tv ? "text-[3.1vh]" : "mt-1 text-xl"}`}>{d.title}</p>}
         {(ranked || mode === "ranking") && (
           <p
             data-testid="live-status"
@@ -185,6 +204,11 @@ export function LiveBoard({
             <span>{d.participants(state!.participants)}</span>
             {state!.status === "open" && state!.showProgress && <span>{d.finishedCount(state!.done)}</span>}
             {state!.showScores && <span>{d.maxScore(state!.maxScore)}</span>}
+          </p>
+        )}
+        {mystery && ranked && (
+          <p className={`mystery-pill mx-auto mt-[1vh] w-fit rounded-full bg-rose-600 px-[1.3em] py-[0.4em] font-bold text-paper ${tv ? "text-[2.4vh]" : "!mt-3 text-sm"}`} data-testid="live-mystery">
+            {d.mystery}
           </p>
         )}
         {state?.round && (
@@ -205,17 +229,19 @@ export function LiveBoard({
           tv ? "max-w-[94vw] items-center justify-center gap-[3vw] px-[2vw] py-[1vh]" : "max-w-2xl flex-col px-4 pb-8 pt-6"
         }`}
       >
-        {ranked ? (
+        {counting ? (
+          <Countdown title={d.revealTitle} tv={tv} onDone={showPodium} />
+        ) : ranked ? (
           <>
             <ol key={final ? "final" : "live"} className={tv ? `grid h-full min-h-0 w-full grid-cols-[minmax(0,1fr)] content-center gap-[2vh] ${rest.length ? "max-w-[44vw]" : "max-w-[60vw]"}` : "space-y-3"}>
               {rows.slice(0, 3).map((r, i) => (
-                <Row key={r.id} row={r} place={i} state={state!} d={d} tv={tv} top reveal={final} />
+                <Row key={r.id} row={r} place={i} state={state!} d={d} tv={tv} top reveal={podium} />
               ))}
             </ol>
             {rest.length > 0 && (
               <ol start={4} className={tv ? "grid h-full min-h-0 w-full max-w-[44vw] grid-cols-[minmax(0,1fr)] content-center gap-[1vh]" : "mt-4 space-y-2.5"}>
                 {visibleRest.map((r) => (
-                  <Row key={r.id} row={r} place={3} state={state!} d={d} tv={tv} roomy={rest.length <= 4} reveal={final} />
+                  <Row key={r.id} row={r} place={3} state={state!} d={d} tv={tv} roomy={rest.length <= 4} reveal={podium} />
                 ))}
                 {pages > 1 && (
                   <li className="mt-[0.6vh] flex list-none justify-center gap-2" aria-hidden="true">
@@ -290,7 +316,7 @@ function Row({ row, place, state, d, tv, top = false, roomy = false, reveal }: {
       data-row={row.id}
       data-testid="live-row"
       data-pos={row.pos}
-      className={`relative flex items-center gap-[0.6em] rounded-[0.8em] border shadow-[var(--shadow-soft)] ${skin} ${size} ${reveal ? "podium-in" : ""}`}
+      className={`relative flex items-center gap-[0.6em] rounded-[0.8em] border shadow-[var(--shadow-soft)] ${skin} ${size} ${reveal ? "podium-in" : state.mystery && place === 0 ? "lead-flash" : ""}`}
       style={reveal ? { animationDelay: `${top ? [3.6, 2.2, 0.9][place] : 0.1}s` } : undefined}
     >
       <span className="flex w-[1.9em] shrink-0 items-center justify-center">
@@ -318,6 +344,16 @@ function Row({ row, place, state, d, tv, top = false, roomy = false, reveal }: {
           </span>
         )}
       </span>
+      {row.heat !== undefined && (
+        <span aria-hidden="true" data-testid="live-heat" className="absolute inset-x-[1em] bottom-[0.18em] h-[0.14em] overflow-hidden rounded-full bg-blush-100">
+          <span className="block h-full rounded-full bg-gradient-to-r from-blush-300 to-rose-600 transition-[width] duration-[1600ms] ease-in-out" style={{ width: `${row.heat}%` }} />
+        </span>
+      )}
+      {state.mystery && (
+        <span className="shrink-0 font-bold text-rose-600" data-testid="live-secret" aria-hidden="true">
+          ???
+        </span>
+      )}
       {row.score !== undefined && (
         <span className="tabular shrink-0 text-right font-bold text-rose-600" data-testid="live-score">
           {row.score}
@@ -325,6 +361,23 @@ function Row({ row, place, state, d, tv, top = false, roomy = false, reveal }: {
         </span>
       )}
     </li>
+  );
+}
+
+/** 3, 2, 1… antes de mostrar a classificação verdadeira. */
+function Countdown({ title, tv, onDone }: { title: string; tv: boolean; onDone: () => void }) {
+  const [n, setN] = useState(4); // 4 = só o título
+  useEffect(() => {
+    const id = setTimeout(() => (n > 1 ? setN(n - 1) : onDone()), n === 4 ? 1800 : 1100);
+    return () => clearTimeout(id);
+  }, [n, onDone]);
+  return (
+    <div className="m-auto flex flex-col items-center py-10 text-center" data-testid="live-countdown" role="status">
+      <p className={`display text-cocoa-900 ${tv ? "text-[6vh]" : "text-3xl"}`}>{title}</p>
+      <p key={n} className={`count-pop display lining-nums mt-[2vh] leading-none text-rose-600 ${tv ? "h-[34vh] text-[32vh]" : "h-40 text-[9rem]"}`}>
+        {n < 4 ? n : <Bear size={tv ? "28vh" : 140} id="count-bear" className="animate-float-soft" />}
+      </p>
+    </div>
   );
 }
 

@@ -475,6 +475,34 @@ body {
 .podium-in {
   animation: podium-in 0.9s var(--ease-soft) both;
 }
+@keyframes lead-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgb(176 106 112 / 0.75);
+  }
+  100% {
+    box-shadow: 0 0 0 1.1em rgb(176 106 112 / 0);
+  }
+}
+.lead-flash {
+  animation: lead-flash 1.3s var(--ease-soft);
+}
+@keyframes mystery-pill {
+  50% {
+    transform: scale(1.05);
+  }
+}
+.mystery-pill {
+  animation: mystery-pill 1.8s ease-in-out infinite;
+}
+@keyframes count-pop {
+  from {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+.count-pop {
+  animation: count-pop 0.5s var(--ease-soft);
+}
 @keyframes live-dot {
   50% {
     opacity: 0.35;

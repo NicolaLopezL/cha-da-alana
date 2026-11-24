@@ -40,6 +40,7 @@ beforeAll(async () => {
   await db.exec(migration);
   // A migração do quiz é aditiva: tudo abaixo precisa continuar valendo depois dela.
   await db.exec(readFileSync(path.resolve("supabase/migrations/20261123000000_quiz.sql"), "utf8"));
+  await db.exec(readFileSync(path.resolve("supabase/migrations/20261124000000_quiz_misterioso.sql"), "utf8"));
   await db.exec(`insert into auth.users values ('${ADMIN}'), ('${OTHER}');
                  insert into public.admins (user_id, email, name) values ('${ADMIN}', 'mae@teste.test', 'Mamãe');`);
 });

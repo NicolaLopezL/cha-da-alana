@@ -33,6 +33,14 @@ async function setSwitch(page: Page, testId: string, on: boolean) {
   await expect(sw).toHaveAttribute("aria-checked", String(on));
 }
 
+async function setMystery(page: Page, on: boolean) {
+  const sw = page.getByTestId("live-mystery");
+  await expect(sw).toBeEnabled();
+  await sw.click();
+  await toast(page, on ? "misterioso ligado" : "revelando");
+  await expect(sw).toHaveAttribute("aria-checked", String(on));
+}
+
 /** Volta ao rascunho com `n` perguntas ativas, todas com "Nicola" como resposta certa. */
 async function reset(page: Page, n: number, mode: "time" | "extra" | "shared" = "time") {
   await page.goto("/admin/quiz");
@@ -387,6 +395,93 @@ test("ranking ao vivo sem login: atualiza sozinho, muda posições e respeita os
   for (const x of [tv, ana, bia, a]) await x.context().close();
 });
 
+test("modo misterioso: liderança em suspense, sem pontos, e revelação da classificação verdadeira", async ({ browser }, testInfo) => {
+  test.setTimeout(200_000);
+  const a = await admin(browser);
+  await reset(a, 3, "time");
+  await click(a, "quiz-open", "Quiz aberto");
+  await a.goto("/admin/quiz/ao-vivo");
+  await setSwitch(a, "live-enabled", true);
+  await setSwitch(a, "live-scores", true);
+  await setSwitch(a, "live-hidden", false);
+  for (const [name, right] of [["Campeã", 3], ["Vice", 2], ["Terceira", 1], ["Quarta", 0]] as const) {
+    const ctx = await browser.newContext();
+    const startKey = [...name.padEnd(16, "x")].map((c) => (c.charCodeAt(0) % 256).toString(16).padStart(2, "0")).join("");
+    expect((await ctx.request.post("/api/quiz/start", { data: { name, lang: "pt", startKey } })).ok()).toBe(true);
+    const { questions } = await (await ctx.request.get("/api/quiz/session")).json();
+    for (const [k, q] of questions.entries()) {
+      const r = await ctx.request.post("/api/quiz/answer", { data: { questionId: q.id, optionId: q.options[k < right ? 0 : 1].id } });
+      expect(r.ok()).toBe(true);
+    }
+    await ctx.close();
+  }
+  const real = ["Campeã", "Vice", "Terceira", "Quarta"];
+  const phone = await guest(browser, testInfo);
+  const errors = collectConsoleErrors(phone);
+  await phone.goto("/quiz/ao-vivo");
+  await expect.poll(() => liveNames(phone)).toEqual(real);
+  const tvCtx = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+  const tv = await tvCtx.newPage();
+  await tv.goto("/quiz/ao-vivo?tv=1");
+
+  // ligado: some a pontuação e a liderança troca sozinha, sem ninguém responder
+  await setMystery(a, true);
+  await expect(a.getByTestId("live-situation")).toContainText("misterioso");
+  for (const p of [phone, tv]) {
+    await expect(p.getByTestId("live-mystery")).toContainText("tudo pode mudar");
+    await expect(p.getByTestId("live-score")).toHaveCount(0);
+    await expect(p.getByTestId("live-secret")).toHaveCount(4);
+    await expect(p.getByTestId("live-heat")).toHaveCount(4);
+  }
+  expect(await (await phone.request.get("/api/quiz/live")).text()).not.toMatch(/"(score|key|correct)"/);
+  await tv.waitForTimeout(1500);
+  await tv.screenshot({ path: testInfo.outputPath("misterioso-tv.png") });
+  await phone.screenshot({ path: testInfo.outputPath("misterioso-celular.png") });
+  expect(await tv.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
+  expect((await new AxeBuilder({ page: phone }).withTags(["wcag2a", "wcag2aa"]).exclude(".mystery-pill").analyze()).violations).toEqual([]);
+  const leaders = new Set<string>();
+  await expect
+    .poll(async () => leaders.add((await liveNames(tv))[0]).size, { timeout: 60_000, intervals: [1000] })
+    .toBeGreaterThanOrEqual(2);
+
+  // o painel continua vendo a verdade
+  await a.goto("/admin/quiz");
+  await expect(a.getByTestId("admin-ranking").locator("li").first()).toContainText("Campeã");
+
+  // desligado a qualquer momento: 3, 2, 1 e a classificação verdadeira
+  await a.goto("/admin/quiz/ao-vivo");
+  await setMystery(a, false);
+  for (const p of [phone, tv]) await expect(p.getByTestId("live-countdown")).toBeVisible();
+  await expect(tv.getByTestId("live-countdown")).toContainText("3");
+  await tv.screenshot({ path: testInfo.outputPath("contagem-tv.png") });
+  for (const p of [phone, tv]) {
+    await expect(p.getByTestId("live-countdown")).toHaveCount(0, { timeout: 12_000 });
+    await expect.poll(() => liveNames(p)).toEqual(real);
+    await expect(p.getByTestId("live-score").first()).toContainText("3");
+    await expect(p.getByTestId("live-secret")).toHaveCount(0);
+  }
+
+  // publicar com o modo ligado: revela direto o resultado oficial
+  await setMystery(a, true);
+  await expect(tv.getByTestId("live-mystery")).toBeVisible();
+  await a.goto("/admin/quiz");
+  await click(a, "quiz-close", "encerrado");
+  await expect(tv.getByTestId("live-mystery")).toBeVisible();
+  await click(a, "quiz-publish", "publicados");
+  await expect(tv.getByTestId("live-countdown")).toBeVisible();
+  await expect(tv.getByTestId("live-countdown")).toHaveCount(0, { timeout: 12_000 });
+  await expect(tv.getByTestId("live-board")).toHaveAttribute("data-mode", "final");
+  await expect.poll(() => liveNames(tv)).toEqual(real);
+  await tv.waitForTimeout(5500);
+  await tv.screenshot({ path: testInfo.outputPath("revelado-tv.png") });
+
+  await a.goto("/admin/quiz/ao-vivo");
+  await setMystery(a, false);
+  expect(errors).toEqual([]);
+  await tvCtx.close();
+  for (const x of [phone, a]) await x.context().close();
+});
+
 test("segurança: sem gabarito nas respostas públicas, sessão obrigatória, outro site bloqueado", async ({ browser, request }, testInfo) => {
   const a = await admin(browser);
   await reset(a, 2);
@@ -632,6 +727,27 @@ test("modo televisão: tela cheia, sem rolagem, nomes grandes e rodízio de pág
   await tv.setViewportSize({ width: 1280, height: 720 });
   await expect(tv.getByTestId("live-row").first()).toBeVisible();
   expect(await tv.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
+
+  // modo misterioso com a tela cheia de gente: tudo continua cabendo
+  await a.goto("/admin/quiz/ao-vivo");
+  await setMystery(a, true);
+  await expect(tv.getByTestId("live-mystery")).toBeVisible();
+  await tv.waitForTimeout(1500);
+  for (const [width, height] of [[1280, 720], [1920, 1080]]) {
+    await tv.setViewportSize({ width, height });
+    await tv.waitForTimeout(1200);
+    const layout = await tv.evaluate(() => {
+      const box = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+      const rows = [...document.querySelectorAll("[data-testid=live-row]")].map((e) => e.getBoundingClientRect());
+      return { top: Math.min(...rows.map((r) => r.top)), bottom: Math.max(...rows.map((r) => r.bottom)), pill: box("[data-testid=live-mystery]").bottom, foot: box("[data-testid=live-connection]").top };
+    });
+    expect(layout.top).toBeGreaterThanOrEqual(layout.pill - 4);
+    expect(layout.bottom).toBeLessThanOrEqual(layout.foot + 4);
+  }
+  await tv.screenshot({ path: testInfo.outputPath("tv-misterioso.png") });
+  await setMystery(a, false);
+  await expect(tv.getByTestId("live-countdown")).toBeVisible();
+  await expect(tv.getByTestId("live-countdown")).toHaveCount(0, { timeout: 12_000 });
 
   await a.goto("/admin/quiz");
   await click(a, "quiz-close", "encerrado");

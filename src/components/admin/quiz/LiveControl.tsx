@@ -1,6 +1,6 @@
 "use client";
 
-import { saveQuizConfigAction } from "@/app/admin/quiz-actions";
+import { saveQuizConfigAction, setMysteryAction } from "@/app/admin/quiz-actions";
 import type { AdminQuizState } from "@/lib/quiz/types";
 import { Panel } from "../parts";
 import { CopyButton } from "../ui";
@@ -18,7 +18,9 @@ export function LiveControl({ initial, url }: { initial: AdminQuizState; url: st
         ? "Oculto: o público vê uma tela de suspense."
         : s.status === "published"
           ? "No ar com o resultado final."
-          : "No ar: o público vê a classificação provisória.";
+          : live.mystery
+            ? "No ar em modo misterioso: só vocês veem a classificação verdadeira, na Visão geral."
+            : "No ar: o público vê a classificação provisória.";
 
   return (
     <div className="space-y-6">
@@ -41,6 +43,21 @@ export function LiveControl({ initial, url }: { initial: AdminQuizState; url: st
             Exibir na televisão ↗
           </a>
         </div>
+      </Panel>
+
+      <Panel title="Modo misterioso" description="Suspense na televisão e nos celulares, sem mexer na pontuação de ninguém.">
+        <Switch
+          testId="live-mystery"
+          label="Modo misterioso"
+          hint="Ligue e desligue quando quiser. Ao desligar, as telas fazem 3, 2, 1 e revelam a classificação verdadeira."
+          checked={live.mystery}
+          onChange={setMysteryAction}
+        />
+        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm leading-relaxed text-cocoa-700">
+          <li>Os primeiros colocados ficam trocando de lugar, sempre bem próximos, e os pontos viram “???”.</li>
+          <li>A posição mostrada entre eles é só suspense. A verdadeira continua em <strong>Visão geral</strong>.</li>
+          <li>Para revelar o resultado oficial, use <strong>Publicar Resultados</strong>: funciona direto, mesmo com o modo ligado.</li>
+        </ul>
       </Panel>
 
       <Panel title="Controles" description="Cada mudança vale na hora e chega às telas em poucos segundos.">

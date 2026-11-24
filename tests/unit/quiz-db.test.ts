@@ -7,7 +7,9 @@ import { LOCAL_ROLES_SQL, rpcOver } from "@/lib/server/quiz/local-db";
 import type { AdminParticipant, AdminQuestion, AdminQuizState, LiveState, PublicQuestion, QuizSession } from "@/lib/quiz/types";
 
 /** Regras do quiz testadas direto na migração SQL real (Postgres embutido). */
-const migration = readFileSync(path.resolve("supabase/migrations/20261123000000_quiz.sql"), "utf8");
+const migration = ["20261123000000_quiz.sql", "20261124000000_quiz_misterioso.sql"]
+  .map((f) => readFileSync(path.resolve("supabase/migrations", f), "utf8"))
+  .join("\n");
 
 let db: PGlite;
 let rpc: QuizRpc;
@@ -53,6 +55,27 @@ beforeEach(async () => {
   await db.exec("grant usage on schema public to anon, authenticated, service_role;");
   await db.exec(migration);
   rpc = rpcOver(db);
+});
+
+describe("modo misterioso", () => {
+  it("liga e desliga sem mudar classificação nem pontuação; só o servidor executa", async () => {
+    const qs = await setup(3, { liveEnabled: true });
+    await play("Ana", qs, 3);
+    await play("Bia", qs, 1);
+    const before = [await live(), (await state()).ranking];
+    expect(await rpc("quiz_mystery")).toBe(false);
+    await rpc("quiz_set_mystery", { p_on: true });
+    expect(await rpc("quiz_mystery")).toBe(true);
+    expect([await live(), (await state()).ranking]).toEqual(before);
+    await rpc("quiz_set_mystery", { p_on: false });
+    expect(await rpc("quiz_mystery")).toBe(false);
+    for (const role of ["anon", "authenticated"]) {
+      await db.exec(`set role ${role}`);
+      await expect(db.query("select public.quiz_mystery()")).rejects.toThrow(/permission denied/);
+      await expect(db.query("select public.quiz_set_mystery(true)")).rejects.toThrow(/permission denied/);
+      await db.exec("reset role");
+    }
+  });
 });
 
 describe("migração do quiz", () => {

@@ -55,6 +55,8 @@ export interface LiveRow {
   done: boolean;
   score?: number;
   answered?: number;
+  /** Só no modo misterioso: tamanho (%) da barra de disputa. Não tem relação com a pontuação. */
+  heat?: number;
 }
 
 export interface LiveState {
@@ -70,6 +72,8 @@ export interface LiveState {
   tie: boolean;
   /** Rodada de desempate em andamento. */
   round: boolean;
+  /** Modo misterioso: posições em suspense, sem pontuações. */
+  mystery?: boolean;
   rows: LiveRow[];
 }
 
@@ -130,7 +134,7 @@ export interface AdminQuizState {
   defaultPoints: number;
   allowSameDevice: boolean;
   texts: QuizTextOverrides;
-  live: { enabled: boolean; showScores: boolean; showProgress: boolean; top10: boolean; hidden: boolean };
+  live: { enabled: boolean; showScores: boolean; showProgress: boolean; top10: boolean; hidden: boolean; mystery: boolean };
   openedAt: string | null;
   closedAt: string | null;
   publishedAt: string | null;
