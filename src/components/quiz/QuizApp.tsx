@@ -8,7 +8,7 @@ import { IconHeart } from "@/components/invite/Icons";
 import { OrnamentFrame, Particles } from "@/components/invite/Ornaments";
 import { Bear, HeartRain } from "./Art";
 import { LangSwitch, useQuizLang } from "./LangSwitch";
-import { QuestionFlow } from "./QuestionFlow";
+import { clearPending, QuestionFlow } from "./QuestionFlow";
 
 interface State {
   info: QuizInfo | null;
@@ -17,6 +17,9 @@ interface State {
 }
 
 const POLL_MS = 8000;
+
+/** Já mostramos os parabéns nesta visita? Ao voltar pelo navegador, vale o "você já respondeu". */
+let celebrated = false;
 
 async function fetchState(): Promise<State | null> {
   try {
@@ -33,14 +36,39 @@ export function QuizApp({ initial, initialLang }: { initial: State; initialLang:
   const [notice, setNotice] = useState<QuizError | null>(null);
   const [inRound, setInRound] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
+  const [deviceUsed, setDeviceUsed] = useState(false);
+  const lastStatus = useRef(initial.session?.status);
+  const latest = useRef(0);
   const { info, session, questions } = state;
   const d = quizDict(lang, info?.texts);
 
   const refresh = useCallback(async () => {
+    const turn = ++latest.current;
     const next = await fetchState();
-    if (next) setState(next);
+    if (next && turn === latest.current) {
+      // A última resposta chegou (inclusive a que tinha ficado guardada no aparelho).
+      if (lastStatus.current === "active" && next.session?.status === "done" && !celebrated) {
+        celebrated = true;
+        setCelebrate(true);
+      }
+      lastStatus.current = next.session?.status;
+      setState(next);
+    }
     return next;
   }, []);
+
+  // Voltar pelo navegador pode reabrir uma cópia antiga da página: confere o progresso real no servidor.
+  useEffect(() => {
+    const first = setTimeout(refresh, 0);
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) void refresh();
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => {
+      clearTimeout(first);
+      window.removeEventListener("pageshow", onShow);
+    };
+  }, [refresh]);
 
   const round = session?.round && !session.round.finished ? session.round : null;
   const answering = (session?.status === "active" && session.canAnswer) || (inRound && round !== null);
@@ -61,6 +89,7 @@ export function QuizApp({ initial, initialLang }: { initial: State; initialLang:
 
   const onFinished = useCallback(async () => {
     setInRound(false);
+    celebrated = true;
     setCelebrate(true);
     // A última resposta já foi confirmada pelo servidor: mostra o agradecimento na hora.
     setState((s) =>
@@ -91,6 +120,8 @@ export function QuizApp({ initial, initialLang }: { initial: State; initialLang:
     try {
       const res = await fetch("/api/quiz/session", { method: "DELETE" });
       if (!res.ok) throw new Error();
+      clearPending();
+      celebrated = false;
       setCelebrate(false);
       setNotice(null);
       setState((s) => ({ ...s, session: null, questions: [] }));
@@ -100,11 +131,14 @@ export function QuizApp({ initial, initialLang }: { initial: State; initialLang:
     }
   };
 
+  // Muda só quando o servidor traz um progresso diferente do que a tela recebeu ao abrir.
+  const flowVersion = session ? Object.keys(session.answers).length : 0;
+
   let body: ReactNode;
   if (session && inRound && round) {
     body = (
       <QuestionFlow
-        key={round.id}
+        key={`${round.id}-${flowVersion}`}
         questions={round.questions}
         initialAnswers={session.answers}
         name={session.name}
@@ -117,7 +151,7 @@ export function QuizApp({ initial, initialLang }: { initial: State; initialLang:
   } else if (session?.status === "active" && session.canAnswer && questions.length > 0) {
     body = (
       <QuestionFlow
-        key="main"
+        key={`main-${flowVersion}`}
         questions={questions}
         initialAnswers={session.answers}
         name={session.name}
@@ -143,10 +177,37 @@ export function QuizApp({ initial, initialLang }: { initial: State; initialLang:
         )}
       </div>
     );
-    if (session?.status === "done") {
+    const finalReady = status === "published";
+    const liveReady = !!info?.liveEnabled && status !== "draft" && !finalReady;
+    const results = (
+      <div className="mt-8 flex flex-col items-center gap-4" data-testid="quiz-results">
+        {finalReady || liveReady ? (
+          <>
+            <p className="text-lg font-medium text-cocoa-700">{d.wantResults}</p>
+            <Link href={finalReady ? "/quiz/ranking" : "/quiz/ao-vivo"} className="cta-glow" data-testid={finalReady ? "see-final" : "see-live"}>
+              <span className="cta-glow-shine" aria-hidden="true" />
+              <IconHeart size={20} />
+              {finalReady ? d.seeFinal : d.seeLive}
+            </Link>
+          </>
+        ) : (
+          <p className="max-w-[36ch] text-sm font-medium text-cocoa-500">{d.resultsSoon}</p>
+        )}
+      </div>
+    );
+    if (deviceUsed && !session) {
+      body = (
+        <Card testId="quiz-already">
+          <Bear size={132} id="already-bear" className="animate-float-soft mx-auto" />
+          <h1 className="display mt-6 text-[clamp(1.9rem,7vw,2.6rem)] text-cocoa-900">{d.alreadyTitle}</h1>
+          <p className="mx-auto mt-4 max-w-[38ch] text-lg leading-relaxed text-cocoa-700">{d.errors.device_used}</p>
+          {results}
+        </Card>
+      );
+    } else if (session?.status === "done") {
       const doneRound = session.round?.finished;
       body = (
-        <Card testId="quiz-thanks">
+        <Card testId={celebrate || round || doneRound ? "quiz-thanks" : "quiz-already"}>
           <Bear size={132} id="thanks-bear" className="animate-float-soft mx-auto" />
           {round ? (
             <>
@@ -162,10 +223,10 @@ export function QuizApp({ initial, initialLang }: { initial: State; initialLang:
               <p className="script mt-4 break-words px-2 text-[clamp(2.6rem,12vw,4rem)] text-rose-600" data-testid="thanks-name">
                 {session.name}
               </p>
-              <h1 className="display mt-4 text-[clamp(1.9rem,7vw,2.6rem)] text-cocoa-900">{doneRound ? d.tiebreakDone : d.thanksTitle}</h1>
-              {!doneRound && <p className="mx-auto mt-4 max-w-[38ch] text-lg leading-relaxed text-cocoa-700">{d.thanksText}</p>}
+              <h1 className="display mt-4 text-[clamp(1.9rem,7vw,2.6rem)] text-cocoa-900">{doneRound ? d.tiebreakDone : celebrate ? d.thanksTitle : d.alreadyTitle}</h1>
+              {!doneRound && <p className="mx-auto mt-4 max-w-[38ch] text-lg leading-relaxed text-cocoa-700">{celebrate ? d.thanksText : d.alreadyText}</p>}
               {status !== "published" && <p className="mt-5 text-sm font-medium text-cocoa-500">{d.waitingResult}</p>}
-              {links}
+              {results}
               {info?.allowSameDevice && status === "open" && (
                 <button
                   type="button"
@@ -202,7 +263,7 @@ export function QuizApp({ initial, initialLang }: { initial: State; initialLang:
         </Card>
       );
     } else if (status === "open") {
-      body = <Welcome info={info!} lang={lang} onStarted={refresh} />;
+      body = <Welcome info={info!} lang={lang} onStarted={refresh} onDeviceUsed={() => setDeviceUsed(true)} />;
     } else {
       body = (
         <Card testId="quiz-not-open">
@@ -246,7 +307,14 @@ function Card({ children, testId }: { children: ReactNode; testId: string }) {
   );
 }
 
-function Welcome({ info, lang, onStarted }: { info: QuizInfo; lang: QuizLang; onStarted: () => Promise<State | null> }) {
+interface WelcomeProps {
+  info: QuizInfo;
+  lang: QuizLang;
+  onStarted: () => Promise<State | null>;
+  onDeviceUsed: () => void;
+}
+
+function Welcome({ info, lang, onStarted, onDeviceUsed }: WelcomeProps) {
   const d = quizDict(lang, info.texts);
   const [error, setError] = useState<QuizError | null>(null);
   const [busy, setBusy] = useState(false);
@@ -276,10 +344,12 @@ function Welcome({ info, lang, onStarted }: { info: QuizInfo; lang: QuizLang; on
       });
       const data = (await res.json()) as { ok?: true; error?: QuizError };
       if (data.ok) {
+        clearPending();
         const next = await onStarted();
         if (next?.session) return;
         setError("unavailable");
       } else {
+        if (data.error === "device_used") return onDeviceUsed();
         setError(data.error ?? "unavailable");
         if (data.error === "name_taken" || data.error === "name_required") input.current?.focus();
         if (data.error === "not_open") await onStarted();

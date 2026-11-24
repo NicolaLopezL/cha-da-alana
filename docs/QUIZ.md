@@ -74,6 +74,9 @@ Faça nesta ordem. Enquanto a migração não for executada, o convite continua 
 - **Participação repetida:** em **Participantes**, use o filtro *Possíveis duplicidades* e **Invalidar** (dá para restaurar).
 - **Nome impróprio na TV:** abra o participante e renomeie ou invalide.
 - **Gabarito errado descoberto tarde:** encerre, corrija em **Perguntas** e as pontuações são recalculadas.
+- **Convidado fechou o site no meio:** ao abrir de novo no mesmo navegador, continua na pergunta em que parou, sem digitar o nome.
+- **Convidado já respondeu:** ao voltar, vê "Você já respondeu este quiz!" e o botão do ranking (se a transmissão estiver ligada).
+- **Sem voltar:** a primeira resposta vale. Não há botão de voltar e o servidor recusa trocas.
 - **Convidado sem internet:** a resposta fica guardada no aparelho e é reenviada. Ele não avança até salvar.
 
 ## Como funciona por dentro

@@ -26,6 +26,9 @@ function writePending(p: Pending | null) {
   } catch {}
 }
 
+/** Esquece uma resposta que ficou guardada de outra participação neste aparelho. */
+export const clearPending = () => writePending(null);
+
 /** null = falha de rede/servidor: vale tentar de novo. */
 async function post(p: Pending): Promise<AnswerResult | null> {
   const ctrl = new AbortController();
@@ -69,6 +72,9 @@ export function QuestionFlow({ questions, initialAnswers, name, lang, d, onFinis
   const wake = useRef<(() => void) | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const moved = useRef(false);
+
+  // Voltou depois de fechar a página: avisa que continua de onde parou, até a próxima resposta.
+  const [resumed, setResumed] = useState(() => questions.some((x) => initialAnswers[x.id]));
 
   const total = questions.length;
   const q = questions[index];
@@ -117,11 +123,11 @@ export function QuestionFlow({ questions, initialAnswers, name, lang, d, onFinis
         return;
       }
       saved.current = { ...saved.current, [questionId]: optionId };
-      const at = questions.findIndex((x) => x.id === questionId);
-      const next = at + 1 < questions.length ? at + 1 : questions.findIndex((x) => !saved.current[x.id]);
+      const next = questions.findIndex((x) => !saved.current[x.id]);
       moved.current = true;
       setAnswers(saved.current);
       setIndex(Math.max(0, next));
+      setResumed(false);
       setChoice(null);
       setSave("idle");
     },
@@ -134,7 +140,7 @@ export function QuestionFlow({ questions, initialAnswers, name, lang, d, onFinis
     const p = readPending();
     if (p) {
       const at = questions.findIndex((x) => x.id === p.q && x.options.some((o) => o.id === p.o));
-      if (at >= 0 && initialAnswers[p.q] !== p.o) {
+      if (at >= 0 && !initialAnswers[p.q]) {
         queueMicrotask(() => {
           if (!alive.current) return;
           setIndex(at);
@@ -158,14 +164,6 @@ export function QuestionFlow({ questions, initialAnswers, name, lang, d, onFinis
     heading.current?.focus({ preventScroll: true });
     window.scrollTo({ top: 0 });
   }, [index]);
-
-  const go = (to: number) => {
-    if (busy.current) return;
-    moved.current = true;
-    setChoice(null);
-    setSave("idle");
-    setIndex(to);
-  };
 
   if (!q) return null;
   const selected = choice ?? answers[q.id] ?? null;
@@ -192,6 +190,12 @@ export function QuestionFlow({ questions, initialAnswers, name, lang, d, onFinis
           style={{ width: `${total ? (answered / total) * 100 : 0}%` }}
         />
       </div>
+
+      {resumed && (
+        <p role="status" data-testid="quiz-resumed" className="mt-4 rounded-2xl bg-blush-100 px-4 py-3 text-center text-sm font-medium text-cocoa-900">
+          {d.resumed}
+        </p>
+      )}
 
       <div key={q.id} className="quiz-in flex flex-1 flex-col justify-center py-8">
         <h2 ref={heading} tabIndex={-1} id="quiz-question-title" className="display text-center text-[clamp(1.9rem,7vw,2.7rem)] text-cocoa-900 outline-none">
@@ -240,21 +244,6 @@ export function QuestionFlow({ questions, initialAnswers, name, lang, d, onFinis
         {save === "offline" && (
           <button type="button" onClick={() => wake.current?.()} className="btn btn-soft mx-auto mt-1">
             {d.retryNow}
-          </button>
-        )}
-      </div>
-
-      <div className="flex min-h-14 items-center justify-between gap-3 pb-2">
-        {index > 0 ? (
-          <button type="button" onClick={() => go(index - 1)} disabled={locked} className="btn btn-ghost" data-testid="quiz-back">
-            ← {d.back}
-          </button>
-        ) : (
-          <span />
-        )}
-        {answers[q.id] && index < total - 1 && (
-          <button type="button" onClick={() => go(index + 1)} disabled={locked} className="btn btn-ghost" data-testid="quiz-next">
-            {d.next} →
           </button>
         )}
       </div>

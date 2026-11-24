@@ -40,7 +40,12 @@ async function reset(page: Page, n: number, mode: "time" | "extra" | "shared" = 
   if ((await badge.getAttribute("data-status")) === "open") await click(page, "quiz-close", "encerrado");
   if ((await badge.getAttribute("data-status")) !== "draft") {
     await page.goto("/admin/quiz/ajustes");
-    await page.getByLabel("Digite ZERAR para confirmar").fill("zerar");
+    await expect(async () => {
+      // o painel pode ainda estar carregando quando digitamos
+      await page.getByLabel("Digite ZERAR para confirmar").fill("");
+      await page.getByLabel("Digite ZERAR para confirmar").fill("zerar");
+      await expect(page.getByTestId("quiz-reset")).toBeEnabled({ timeout: 1000 });
+    }).toPass();
     await click(page, "quiz-reset", "rascunho");
   }
   await page.goto("/admin/quiz/desempate");
@@ -171,7 +176,7 @@ test("perguntas pelo painel: 20 iniciais, criar, traduzir, editar, duplicar, reo
   await page.context().close();
 });
 
-test("fluxo do convidado: nome, salvamento e avanço automáticos, voltar, corrigir, retomar e finalizar sozinho", async ({ browser }, testInfo) => {
+test('fluxo do convidado: nome, salvamento e avanço automáticos, sem voltar, retomar, finalizar sozinho e "já respondeu"', async ({ browser }, testInfo) => {
   const a = await admin(browser);
   await reset(a, 3);
   await click(a, "quiz-open", "Quiz aberto");
@@ -209,17 +214,37 @@ test("fluxo do convidado: nome, salvamento e avanço automáticos, voltar, corri
   expect(await res.json()).toEqual({ ok: true, answered: 1, total: 3, finished: false });
   await expect(q).toHaveAttribute("data-index", "1");
 
-  // voltar e corrigir
-  await p.getByTestId("quiz-back").click();
-  await expect(option(p, 1)).toHaveAttribute("aria-pressed", "true");
-  await option(p, 0).click();
-  await expect(q).toHaveAttribute("data-index", "1");
-  await expect(p.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
+  // sem voltar: não há botão e o servidor não troca uma resposta já dada
+  await expect(q.getByRole("button", { name: /voltar|próxima/i })).toHaveCount(0);
+  await expect(p.getByTestId("quiz-resumed")).toHaveCount(0);
+  const session = async () => (await p.request.get("/api/quiz/session")).json();
+  const q1 = (await session()).questions[0];
+  const change = await p.request.post("/api/quiz/answer", { data: { questionId: q1.id, optionId: q1.options[0].id } });
+  expect(await change.json()).toEqual({ ok: true, answered: 1, total: 3, finished: false });
+  expect((await session()).session.answers).toEqual({ [q1.id]: q1.options[1].id });
 
-  // retomar depois de recarregar
-  await p.reload();
+  // fechou o site sem querer e voltou (nova aba): continua de onde parou, sem digitar o nome de novo
+  const tab = await p.context().newPage();
+  await p.goto("about:blank");
+  await tab.goto("/quiz");
+  await expect(tab.getByTestId("quiz-question")).toHaveAttribute("data-index", "1");
+  await expect(tab.getByTestId("quiz-resumed")).toContainText("Continuamos de onde você parou");
+  await expect(tab.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
+  await tab.waitForTimeout(700);
+  expect((await new AxeBuilder({ page: tab }).withTags(["wcag2a", "wcag2aa"]).analyze()).violations).toEqual([]);
+  await tab.screenshot({ path: testInfo.outputPath("retomada.png") });
+  await tab.close();
+
+  // saiu para o convite e voltou pelo botão do navegador: também mantém
+  await p.goto("/quiz");
   await expect(q).toHaveAttribute("data-index", "1");
   await respond(p, 1, 1);
+  await expect(p.getByTestId("quiz-resumed")).toHaveCount(0);
+  await p.locator("header").getByRole("link").first().click();
+  await expect(p).toHaveURL(/\/$/);
+  await p.goBack();
+  await expect(q).toHaveAttribute("data-index", "2");
+  await expect(p.getByTestId("question-counter")).toHaveText("Pergunta 3 de 3");
   await expect(q).toHaveAttribute("data-index", "2");
 
   // toque duplo na última pergunta: finaliza uma única vez
@@ -232,13 +257,30 @@ test("fluxo do convidado: nome, salvamento e avanço automáticos, voltar, corri
   await expect(p.getByTestId("quiz-thanks")).not.toContainText(/Nicola|acert|ponto/i); // sem gabarito
   await p.screenshot({ path: testInfo.outputPath("agradecimento.png") });
   await p.reload();
-  await expect(p.getByTestId("quiz-thanks")).toBeVisible();
-  expect(errors).toEqual([]);
+  const already = p.getByTestId("quiz-already");
+  await expect(already).toContainText("Você já respondeu este quiz!");
+  await expect(already).toContainText("Tia Marta");
+  await expect(p.locator("#quiz-name")).toHaveCount(0); // não deixa começar de novo
+  await expect(p.getByTestId("quiz-results")).toContainText("assim que ele for liberado");
+  await a.goto("/admin/quiz/ao-vivo");
+  await setSwitch(a, "live-enabled", true);
+  await expect(p.getByTestId("see-live")).toBeVisible({ timeout: 15_000 }); // aparece sem recarregar
+  await expect(already).toContainText("Quer ver os resultados? Clique aqui");
+  await p.waitForTimeout(700);
+  expect((await new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa"]).analyze()).violations).toEqual([]);
+  await p.screenshot({ path: testInfo.outputPath("ja-respondeu.png") });
+  await p.getByTestId("see-live").click({ force: true });
+  await expect(p.getByTestId("live-name").first()).toHaveText("Tia Marta");
+  await p.goBack();
+  await expect(already).toBeVisible();
+  await setSwitch(a, "live-enabled", false);
+  await a.goto("/admin/quiz");
+  expect(errors.filter((e) => !/access control checks/.test(e))).toEqual([]); // WebKit: pedido cancelado ao navegar
 
   // painel acompanha sozinho
   await expect(a.getByTestId("stat-done")).toHaveText("1");
   await expect(a.getByTestId("admin-ranking")).toContainText("Tia Marta");
-  await expect(a.getByTestId("admin-ranking")).toContainText("2 pts");
+  await expect(a.getByTestId("admin-ranking")).toContainText("1 pt");
 
   // mesmo nome é recusado; outra pessoa no mesmo aparelho pode responder
   await p.getByTestId("answer-for-other").click();
@@ -639,6 +681,11 @@ test("invalidação pelo painel avisa o convidado; travas depois de abrir; um po
   await p.request.delete("/api/quiz/session");
   const again = await p.request.post("/api/quiz/start", { data: { name: "Outra", lang: "pt", startKey: "cd".repeat(16) } });
   expect(await again.json()).toEqual({ error: "device_used" });
+  await p.goto("/quiz");
+  await p.locator("#quiz-name").fill("Outra");
+  await expect(p.getByTestId("quiz-start")).toBeEnabled();
+  await p.getByTestId("quiz-start").click({ force: true });
+  await expect(p.getByTestId("quiz-already")).toContainText("Você já respondeu este quiz!");
 
   await a.goto("/admin/quiz/ajustes");
   await setSwitch(a, "same-device", true);

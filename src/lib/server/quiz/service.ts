@@ -74,8 +74,18 @@ export async function startParticipation(input: StartInput): Promise<{ ok: true;
 export const loadSession = (token: string) =>
   call<QuizSession | null>("quiz_session", { p_token_hash: hashSecret(token) });
 
-export const saveAnswer = (token: string, questionId: string, optionId: string) =>
-  call<AnswerResult>("quiz_answer", { p_token_hash: hashSecret(token), p_question: questionId, p_option: optionId });
+/**
+ * A primeira resposta vale: se a pergunta já foi respondida, repete a opção guardada (o banco trata como reenvio).
+ * Assim ninguém olha a própria pontuação no telão e volta para corrigir.
+ */
+export async function saveAnswer(token: string, questionId: string, optionId: string): Promise<AnswerResult> {
+  const previous = (await loadSession(token))?.answers[questionId];
+  return call<AnswerResult>("quiz_answer", {
+    p_token_hash: hashSecret(token),
+    p_question: questionId,
+    p_option: previous ?? optionId,
+  });
+}
 
 /* Ranking ao vivo: um mini-cache por instância evita uma consulta por tela conectada. */
 const LIVE_TTL_MS = 700;
